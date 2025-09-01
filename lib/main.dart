@@ -19,12 +19,13 @@ class BoxingCoachApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localeProvider = Provider.of<LocaleProvider>(context);
-    
+
     return MaterialApp(
       title: 'Boxing Coach Manager',
       theme: ThemeData(
         primarySwatch: Colors.red,
         fontFamily: 'Segoe UI',
+        useMaterial3: true,
       ),
       locale: localeProvider.locale,
       supportedLocales: const [
@@ -40,16 +41,5 @@ class BoxingCoachApp extends StatelessWidget {
       ],
       home: const HomePage(),
     );
-  }
-}
-
-class LocaleProvider with ChangeNotifier {
-  Locale _locale = const Locale('en');
-
-  Locale get locale => _locale;
-
-  void setLocale(Locale loc) {
-    _locale = loc;
-    notifyListeners();
   }
 }

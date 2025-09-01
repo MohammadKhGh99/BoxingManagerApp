@@ -15,11 +15,14 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final appLocalizations = AppLocalizations.of(context)!;
-    final isRTL = Directionality.of(context) == TextDirection.rtl;
-    
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(appLocalizations.title),
+        backgroundColor: Colors.red,
+        foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.language),
@@ -27,28 +30,139 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            _buildHeader(context, appLocalizations),
-            
-            // Stats Cards
-            const SizedBox(height: 20),
-            _buildStatsCards(context, appLocalizations),
-            
-            // Main content
-            const SizedBox(height: 20),
-            _buildMainContent(context, appLocalizations, isRTL),
-          ],
-        ),
+      body: _selectedIndex == 0
+          ? _buildDashboard(context, appLocalizations, screenWidth)
+          : _selectedIndex == 1
+          ? _buildSessionsPage(context, appLocalizations)
+          : _selectedIndex == 2
+          ? _buildParticipantsPage(context, appLocalizations)
+          : _buildMorePage(context, appLocalizations),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) => setState(() => _selectedIndex = index),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: Colors.red,
+        unselectedItemColor: Colors.grey,
+        items: [
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.dashboard),
+            label: appLocalizations.dashboard,
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.calendar_today),
+            label: appLocalizations.sessions,
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.people),
+            label: appLocalizations.participants,
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.more_horiz),
+            label: appLocalizations.more,
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: Colors.red,
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: _selectedIndex == 0
+          ? FloatingActionButton(
+              onPressed: () => _showAddOptions(context, appLocalizations),
+              backgroundColor: Colors.red,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildDashboard(
+    BuildContext context,
+    AppLocalizations appLocalizations,
+    double screenWidth,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          _buildHeader(context, appLocalizations),
+
+          // Stats Cards
+          const SizedBox(height: 20),
+          _buildStatsCards(context, appLocalizations, screenWidth),
+
+          // Today's session
+          const SizedBox(height: 20),
+          _buildTodaysSession(context, appLocalizations),
+
+          // Recent attendance
+          const SizedBox(height: 20),
+          _buildRecentAttendanceMobile(context, appLocalizations),
+
+          // Quick actions
+          const SizedBox(height: 20),
+          _buildQuickActions(context, appLocalizations),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSessionsPage(
+    BuildContext context,
+    AppLocalizations appLocalizations,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            appLocalizations.upcomingSessions,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          _buildUpcomingSessionsMobile(context, appLocalizations),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildParticipantsPage(
+    BuildContext context,
+    AppLocalizations appLocalizations,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            appLocalizations.participants,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          _buildParticipantsList(context, appLocalizations),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMorePage(
+    BuildContext context,
+    AppLocalizations appLocalizations,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            appLocalizations.more,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          _buildPendingPayments(context, appLocalizations),
+          const SizedBox(height: 16),
+          _buildSettingsOptions(context, appLocalizations),
+        ],
       ),
     );
   }
@@ -62,56 +176,56 @@ class _HomePageState extends State<HomePage> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(15),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.sports_mma, color: Colors.amber, size: 36),
-                  const SizedBox(width: 15),
-                  Text(
-                    appLocalizations.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
+              const Icon(Icons.sports_mma, color: Colors.amber, size: 36),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Text(
+                  appLocalizations.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                appLocalizations.subtitle,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
                 ),
+              ),
+              const CircleAvatar(
+                backgroundColor: Colors.white,
+                radius: 25,
+                child: Icon(Icons.person, size: 30, color: Colors.red),
               ),
             ],
           ),
-          const CircleAvatar(
-            backgroundColor: Colors.white,
-            radius: 30,
-            child: Icon(Icons.person, size: 40, color: Colors.red),
+          const SizedBox(height: 10),
+          Text(
+            appLocalizations.subtitle,
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatsCards(BuildContext context, AppLocalizations appLocalizations) {
+  Widget _buildStatsCards(
+    BuildContext context,
+    AppLocalizations appLocalizations,
+    double screenWidth,
+  ) {
+    final crossAxisCount = screenWidth > 600 ? 4 : 2;
+
     return GridView.count(
-      crossAxisCount: 2,
+      crossAxisCount: crossAxisCount,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 15,
       crossAxisSpacing: 15,
-      childAspectRatio: 1.2,
+      childAspectRatio: crossAxisCount == 4 ? 1.1 : 1.3,
       children: [
         _buildStatCard(
           icon: Icons.people,
@@ -149,31 +263,26 @@ class _HomePageState extends State<HomePage> {
   }) {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(15),
+        padding: const EdgeInsets.all(12),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 40, color: Colors.red),
-            const SizedBox(height: 10),
+            Icon(icon, size: 32, color: Colors.red),
+            const SizedBox(height: 8),
             Text(
               value,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 4),
             Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -181,50 +290,13 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildMainContent(BuildContext context, AppLocalizations appLocalizations, bool isRTL) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 3,
-          child: Column(
-            children: [
-              // Today's session
-              _buildTodaysSession(context, appLocalizations),
-              
-              // Recent attendance
-              const SizedBox(height: 20),
-              _buildRecentAttendance(context, appLocalizations),
-            ],
-          ),
-        ),
-        
-        // Sidebar
-        const SizedBox(width: 20),
-        Expanded(
-          flex: 1,
-          child: Column(
-            children: [
-              // Add new section
-              _buildAddNewSection(context, appLocalizations),
-              
-              // Upcoming sessions
-              const SizedBox(height: 20),
-              _buildUpcomingSessions(context, appLocalizations),
-              
-              // Pending payments
-              const SizedBox(height: 20),
-              _buildPendingPayments(context, appLocalizations),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTodaysSession(BuildContext context, AppLocalizations appLocalizations) {
+  Widget _buildTodaysSession(
+    BuildContext context,
+    AppLocalizations appLocalizations,
+  ) {
     return Card(
       elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -247,100 +319,58 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.add),
+                  icon: const Icon(Icons.add, size: 16),
                   label: Text(appLocalizations.newSession),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                   onPressed: () {},
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            _buildSessionCard(
-              title: "Advanced Sparring Session",
-              date: "Today, 6:00 PM - 8:00 PM",
-              description: "Focus on defensive techniques and counter-punching drills.",
-              participants: const [
-                {"name": "Mike Tyson", "paid": false},
-                {"name": "Muhammad Ali", "paid": true},
-                {"name": "Floyd Mayweather", "paid": false},
-                {"name": "George Foreman", "paid": false},
-                {"name": "Manny Pacquiao", "paid": true},
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSessionCard({
-    required String title,
-    required String date,
-    required String description,
-    required List<Map<String, dynamic>> participants,
-  }) {
-    return Card(
-      elevation: 2,
-      color: Colors.grey[50],
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: Colors.red, width: 2),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  date,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(description),
             const SizedBox(height: 15),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: participants.map((participant) {
-                return Chip(
-                  backgroundColor: participant['paid'] ? Colors.green[50] : Colors.blue[50],
-                  label: Row(
-                    mainAxisSize: MainAxisSize.min,
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red, width: 1),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Advanced Sparring Session",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    "Today, 6:00 PM - 8:00 PM",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    "Focus on defensive techniques and counter-punching drills.",
+                  ),
+                  const SizedBox(height: 15),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Icon(
-                        participant['paid'] ? Icons.check : Icons.person,
-                        size: 16,
-                        color: participant['paid'] ? Colors.green : Colors.blue,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        participant['name'],
-                        style: TextStyle(
-                          color: participant['paid'] ? Colors.green : Colors.blue,
-                        ),
-                      ),
+                      _buildParticipantChip("Mike Tyson", false),
+                      _buildParticipantChip("Muhammad Ali", true),
+                      _buildParticipantChip("Floyd Mayweather", false),
+                      _buildParticipantChip("George Foreman", false),
+                      _buildParticipantChip("Manny Pacquiao", true),
                     ],
                   ),
-                );
-              }).toList(),
+                ],
+              ),
             ),
           ],
         ),
@@ -348,17 +378,61 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildRecentAttendance(BuildContext context, AppLocalizations appLocalizations) {
+  Widget _buildParticipantChip(String name, bool paid) {
+    return Chip(
+      backgroundColor: paid ? Colors.green[50] : Colors.blue[50],
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            paid ? Icons.check : Icons.person,
+            size: 16,
+            color: paid ? Colors.green : Colors.blue,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            name,
+            style: TextStyle(
+              color: paid ? Colors.green : Colors.blue,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentAttendanceMobile(
+    BuildContext context,
+    AppLocalizations appLocalizations,
+  ) {
     final attendanceData = [
-      {"participant": "Mike Tyson", "session": "Advanced Technique", "date": "Jun 3, 2024", "status": "attended", "payment": "paid"},
-      {"participant": "Muhammad Ali", "session": "Footwork Drills", "date": "Jun 3, 2024", "status": "attended", "payment": "paid"},
-      {"participant": "George Foreman", "session": "Strength Training", "date": "Jun 2, 2024", "status": "absent", "payment": "pending"},
-      {"participant": "Floyd Mayweather", "session": "Defense Techniques", "date": "Jun 1, 2024", "status": "attended", "payment": "paid"},
-      {"participant": "Manny Pacquiao", "session": "Speed Training", "date": "May 31, 2024", "status": "attended", "payment": "paid"},
+      {
+        "participant": "Mike Tyson",
+        "session": "Advanced Technique",
+        "date": "Jun 3, 2024",
+        "status": "attended",
+        "payment": "paid",
+      },
+      {
+        "participant": "Muhammad Ali",
+        "session": "Footwork Drills",
+        "date": "Jun 3, 2024",
+        "status": "attended",
+        "payment": "paid",
+      },
+      {
+        "participant": "George Foreman",
+        "session": "Strength Training",
+        "date": "Jun 2, 2024",
+        "status": "absent",
+        "payment": "pending",
+      },
     ];
 
     return Card(
       elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -377,58 +451,41 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: [
-                  DataColumn(label: Text(appLocalizations.participant)),
-                  DataColumn(label: Text(appLocalizations.session)),
-                  DataColumn(label: Text(appLocalizations.date)),
-                  DataColumn(label: Text(appLocalizations.status)),
-                  DataColumn(label: Text(appLocalizations.payment)),
-                ],
-                rows: attendanceData.map((data) {
-                  return DataRow(cells: [
-                    DataCell(Text(data['participant'] ?? 'Unknown')),
-                    DataCell(Text(data['session'] ?? 'Unknown')),
-                    DataCell(Text(data['date'] ?? 'Unknown')),
-                    DataCell(
-                      Chip(
-                        backgroundColor: data['status'] == 'attended' 
-                            ? Colors.green[50] 
-                            : Colors.red[50],
-                        label: Text(
-                          data['status'] == 'attended' 
-                              ? appLocalizations.attended 
-                              : appLocalizations.absent,
-                          style: TextStyle(
-                            color: data['status'] == 'attended' 
-                                ? Colors.green 
-                                : Colors.red,
-                          ),
-                        ),
+            const SizedBox(height: 15),
+            ...attendanceData.map(
+              (data) => Card(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                color: Colors.grey[50],
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: data['status'] == 'attended'
+                        ? Colors.green
+                        : Colors.red,
+                    child: Icon(
+                      data['status'] == 'attended' ? Icons.check : Icons.close,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+                  title: Text(data['participant']!),
+                  subtitle: Text('${data['session']} • ${data['date']}'),
+                  trailing: Chip(
+                    backgroundColor: data['payment'] == 'paid'
+                        ? Colors.green[50]
+                        : Colors.orange[50],
+                    label: Text(
+                      data['payment'] == 'paid'
+                          ? appLocalizations.paid
+                          : appLocalizations.pending,
+                      style: TextStyle(
+                        color: data['payment'] == 'paid'
+                            ? Colors.green
+                            : Colors.orange,
+                        fontSize: 12,
                       ),
                     ),
-                    DataCell(
-                      Chip(
-                        backgroundColor: data['payment'] == 'paid' 
-                            ? Colors.blue[50] 
-                            : Colors.orange[50],
-                        label: Text(
-                          data['payment'] == 'paid' 
-                              ? appLocalizations.paid 
-                              : appLocalizations.pending,
-                          style: TextStyle(
-                            color: data['payment'] == 'paid' 
-                                ? Colors.blue 
-                                : Colors.orange,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ]);
-                }).toList(),
+                  ),
+                ),
               ),
             ),
           ],
@@ -437,51 +494,50 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildAddNewSection(BuildContext context, AppLocalizations appLocalizations) {
+  Widget _buildQuickActions(
+    BuildContext context,
+    AppLocalizations appLocalizations,
+  ) {
     return Card(
       elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
-                const Icon(Icons.add_circle, color: Colors.red),
-                const SizedBox(width: 10),
+                Icon(Icons.flash_on, color: Colors.red),
+                SizedBox(width: 10),
                 Text(
-                  appLocalizations.addNew,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  'Quick Actions',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            Column(
+            const SizedBox(height: 15),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildAddButton(
+                _buildQuickActionButton(
                   icon: Icons.person_add,
-                  text: appLocalizations.addParticipant,
+                  label: 'Add\nParticipant',
                   onPressed: () {},
                 ),
-                const SizedBox(height: 10),
-                _buildAddButton(
-                  icon: Icons.calendar_today,
-                  text: appLocalizations.scheduleSession,
+                _buildQuickActionButton(
+                  icon: Icons.check_circle,
+                  label: 'Take\nAttendance',
                   onPressed: () {},
                 ),
-                const SizedBox(height: 10),
-                _buildAddButton(
+                _buildQuickActionButton(
                   icon: Icons.payment,
-                  text: appLocalizations.recordPayment,
+                  label: 'Record\nPayment',
                   onPressed: () {},
                 ),
-                const SizedBox(height: 10),
-                _buildAddButton(
-                  icon: Icons.checklist,
-                  text: appLocalizations.takeAttendance,
+                _buildQuickActionButton(
+                  icon: Icons.schedule,
+                  label: 'Schedule\nSession',
                   onPressed: () {},
                 ),
               ],
@@ -492,106 +548,185 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildAddButton({
+  Widget _buildQuickActionButton({
     required IconData icon,
-    required String text,
+    required String label,
     required VoidCallback onPressed,
   }) {
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.red,
-        side: const BorderSide(color: Colors.red),
-        padding: const EdgeInsets.symmetric(vertical: 15),
-      ),
-      onPressed: onPressed,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return GestureDetector(
+      onTap: onPressed,
+      child: Column(
         children: [
-          Icon(icon),
-          const SizedBox(width: 10),
-          Text(text),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red[50],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: Colors.red, size: 24),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildUpcomingSessions(BuildContext context, AppLocalizations appLocalizations) {
+  Widget _buildUpcomingSessionsMobile(
+    BuildContext context,
+    AppLocalizations appLocalizations,
+  ) {
     final sessions = [
-      {"title": "Beginner's Class", "date": "Tomorrow, 5:00 PM", "participants": "6"},
-      {"title": "Sparring Session", "date": "Jun 7, 6:30 PM", "participants": "8"},
-      {"title": "Conditioning & Fitness", "date": "Jun 9, 10:00 AM", "participants": "12"},
-      {"title": "Advanced Techniques", "date": "Jun 11, 7:00 PM", "participants": "5"},
+      {
+        "title": "Beginner's Class",
+        "date": "Tomorrow, 5:00 PM",
+        "participants": "6",
+      },
+      {
+        "title": "Sparring Session",
+        "date": "Jun 7, 6:30 PM",
+        "participants": "8",
+      },
+      {
+        "title": "Conditioning & Fitness",
+        "date": "Jun 9, 10:00 AM",
+        "participants": "12",
+      },
     ];
 
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.upcoming, color: Colors.red),
-                const SizedBox(width: 10),
-                Text(
-                  appLocalizations.upcomingSessions,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: sessions.length,
+      itemBuilder: (context, index) {
+        final session = sessions[index];
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.fitness_center, color: Colors.red),
             ),
-            const SizedBox(height: 15),
-            Column(
-              children: sessions.map((session) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            session['date']!,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            session['title']!,
-                            style: const TextStyle(
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Chip(
-                        backgroundColor: Colors.blue[50],
-                        label: Text("${session['participants']} ${appLocalizations.participants}"),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+            title: Text(session['title']!),
+            subtitle: Text(session['date']!),
+            trailing: Chip(
+              backgroundColor: Colors.blue[50],
+              label: Text(
+                '${session['participants']} ${appLocalizations.participants}',
+                style: const TextStyle(fontSize: 12),
+              ),
             ),
-          ],
-        ),
-      ),
+            onTap: () {},
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildPendingPayments(BuildContext context, AppLocalizations appLocalizations) {
+  Widget _buildParticipantsList(
+    BuildContext context,
+    AppLocalizations appLocalizations,
+  ) {
+    final participants = [
+      {"name": "Mike Tyson", "status": "Active", "lastSession": "Today"},
+      {"name": "Muhammad Ali", "status": "Active", "lastSession": "Yesterday"},
+      {
+        "name": "Floyd Mayweather",
+        "status": "Pending",
+        "lastSession": "3 days ago",
+      },
+      {
+        "name": "George Foreman",
+        "status": "Active",
+        "lastSession": "1 week ago",
+      },
+    ];
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: participants.length,
+      itemBuilder: (context, index) {
+        final participant = participants[index];
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: participant['status'] == 'Active'
+                  ? Colors.green
+                  : Colors.orange,
+              child: Text(
+                participant['name']![0],
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            title: Text(participant['name']!),
+            subtitle: Text('Last session: ${participant['lastSession']}'),
+            trailing: Chip(
+              backgroundColor: participant['status'] == 'Active'
+                  ? Colors.green[50]
+                  : Colors.orange[50],
+              label: Text(
+                participant['status']!,
+                style: TextStyle(
+                  color: participant['status'] == 'Active'
+                      ? Colors.green
+                      : Colors.orange,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            onTap: () {},
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPendingPayments(
+    BuildContext context,
+    AppLocalizations appLocalizations,
+  ) {
     final payments = [
-      {"name": "George Foreman", "description": "2 sessions overdue", "amount": "\$120"},
-      {"name": "Evander Holyfield", "description": "Monthly fee", "amount": "\$200"},
-      {"name": "Joe Frazier", "description": "Private session", "amount": "\$80"},
+      {
+        "name": "George Foreman",
+        "description": "2 sessions overdue",
+        "amount": "\$120",
+      },
+      {
+        "name": "Evander Holyfield",
+        "description": "Monthly fee",
+        "amount": "\$200",
+      },
+      {
+        "name": "Joe Frazier",
+        "description": "Private session",
+        "amount": "\$80",
+      },
     ];
 
     return Card(
       elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -611,45 +746,157 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
             const SizedBox(height: 15),
-            Column(
-              children: payments.map((payment) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            payment['name']!,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            payment['description']!,
-                            style: const TextStyle(
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Chip(
-                        backgroundColor: Colors.orange[50],
-                        label: Text(
-                          payment['amount']!,
-                          style: const TextStyle(color: Colors.orange),
-                        ),
-                      ),
-                    ],
+            ...payments.map(
+              (payment) => Card(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                color: Colors.orange[50],
+                child: ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.orange,
+                    child: Icon(
+                      Icons.attach_money,
+                      color: Colors.white,
+                      size: 16,
+                    ),
                   ),
-                );
-              }).toList(),
+                  title: Text(payment['name']!),
+                  subtitle: Text(payment['description']!),
+                  trailing: Text(
+                    payment['amount']!,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange,
+                    ),
+                  ),
+                  onTap: () {},
+                ),
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSettingsOptions(
+    BuildContext context,
+    AppLocalizations appLocalizations,
+  ) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.language, color: Colors.red),
+            title: Text(appLocalizations.language),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () => _showLanguageDialog(context),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.settings, color: Colors.red),
+            title: const Text('Settings'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {},
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.help, color: Colors.red),
+            title: const Text('Help & Support'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {},
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.info, color: Colors.red),
+            title: const Text('About'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {},
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddOptions(
+    BuildContext context,
+    AppLocalizations appLocalizations,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                appLocalizations.addNew,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildBottomSheetOption(
+                icon: Icons.person_add,
+                title: appLocalizations.addParticipant,
+                onTap: () => Navigator.pop(context),
+              ),
+              _buildBottomSheetOption(
+                icon: Icons.calendar_today,
+                title: appLocalizations.scheduleSession,
+                onTap: () => Navigator.pop(context),
+              ),
+              _buildBottomSheetOption(
+                icon: Icons.payment,
+                title: appLocalizations.recordPayment,
+                onTap: () => Navigator.pop(context),
+              ),
+              _buildBottomSheetOption(
+                icon: Icons.checklist,
+                title: appLocalizations.takeAttendance,
+                onTap: () => Navigator.pop(context),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomSheetOption({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.red[50],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: Colors.red),
+      ),
+      title: Text(title),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: onTap,
     );
   }
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class AppLocalizations {
   final Locale locale;
@@ -10,7 +9,8 @@ class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   Map<String, String> get _localizedStrings {
     switch (locale.languageCode) {
@@ -53,11 +53,15 @@ class AppLocalizations {
   String get english => _localizedStrings['english']!;
   String get arabic => _localizedStrings['arabic']!;
   String get hebrew => _localizedStrings['hebrew']!;
+  String get dashboard => _localizedStrings['dashboard']!;
+  String get sessions => _localizedStrings['sessions']!;
+  String get more => _localizedStrings['more']!;
 
   // English strings
   static const Map<String, String> _englishStrings = {
     'title': 'Boxing Coach Manager',
-    'subtitle': 'Manage your boxing sessions, participants, attendance, and payments',
+    'subtitle':
+        'Manage your boxing sessions, participants, attendance, and payments',
     'totalParticipants': 'Total Participants',
     'sessionsThisMonth': 'Sessions This Month',
     'revenueThisMonth': 'Revenue This Month',
@@ -86,6 +90,9 @@ class AppLocalizations {
     'english': 'English',
     'arabic': 'Arabic',
     'hebrew': 'Hebrew',
+    'dashboard': 'Dashboard',
+    'sessions': 'Sessions',
+    'more': 'More',
   };
 
   // Arabic strings
@@ -120,6 +127,9 @@ class AppLocalizations {
     'english': 'الإنجليزية',
     'arabic': 'العربية',
     'hebrew': 'العبرية',
+    'dashboard': 'لوحة التحكم',
+    'sessions': 'الجلسات',
+    'more': 'المزيد',
   };
 
   // Hebrew strings
@@ -154,6 +164,9 @@ class AppLocalizations {
     'english': 'אנגלית',
     'arabic': 'ערבית',
     'hebrew': 'עברית',
+    'dashboard': 'לוח בקרה',
+    'sessions': 'אימונים',
+    'more': 'עוד',
   };
 }
 
@@ -168,7 +181,8 @@ class LocaleProvider with ChangeNotifier {
   }
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
