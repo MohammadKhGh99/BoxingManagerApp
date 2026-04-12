@@ -156,17 +156,6 @@ class AppLocalizations {
   };
 }
 
-class LocaleProvider with ChangeNotifier {
-  Locale _locale = const Locale('en');
-
-  Locale get locale => _locale;
-
-  void setLocale(Locale loc) {
-    _locale = loc;
-    notifyListeners();
-  }
-}
-
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 

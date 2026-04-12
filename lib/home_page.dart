@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:boxing_coach_manager/app_localizations.dart';
+import 'package:boxing_coach_manager/providers/app_data_provider.dart';
+import 'package:boxing_coach_manager/locale_provider.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -15,12 +18,29 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final appLocalizations = AppLocalizations.of(context)!;
+    final dataProvider = context.watch<AppDataProvider>();
     final isRTL = Directionality.of(context) == TextDirection.rtl;
+
+    if (dataProvider.isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(appLocalizations.title),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: Text(appLocalizations.title),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.backup),
+            tooltip: 'Backup database',
+            onPressed: () => _backupDatabase(context),
+          ),
           IconButton(
             icon: const Icon(Icons.language),
             onPressed: () => _showLanguageDialog(context),
@@ -37,11 +57,11 @@ class _HomePageState extends State<HomePage> {
 
             // Stats Cards
             const SizedBox(height: 20),
-            _buildStatsCards(context, appLocalizations),
+            _buildStatsCards(context, appLocalizations, dataProvider),
 
             // Main content
             const SizedBox(height: 20),
-            _buildMainContent(context, appLocalizations, isRTL),
+            _buildMainContent(context, appLocalizations, isRTL, dataProvider),
           ],
         ),
       ),
@@ -104,8 +124,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildStatsCards(
-      BuildContext context, AppLocalizations appLocalizations) {
+  Widget _buildStatsCards(BuildContext context,
+      AppLocalizations appLocalizations, AppDataProvider dataProvider) {
     return GridView.count(
       crossAxisCount: 4,
       shrinkWrap: true,
@@ -116,25 +136,25 @@ class _HomePageState extends State<HomePage> {
       children: [
         _buildStatCard(
           icon: Icons.people,
-          value: "24",
+          value: dataProvider.totalParticipants.toString(),
           label: appLocalizations.totalParticipants,
           context: context,
         ),
         _buildStatCard(
           icon: Icons.calendar_today,
-          value: "18",
+          value: dataProvider.sessionsThisMonth.toString(),
           label: appLocalizations.sessionsThisMonth,
           context: context,
         ),
         _buildStatCard(
           icon: Icons.attach_money,
-          value: "\$1,240",
+          value: '\$${dataProvider.revenueThisMonth.toStringAsFixed(0)}',
           label: appLocalizations.revenueThisMonth,
           context: context,
         ),
         _buildStatCard(
           icon: Icons.percent,
-          value: "92%",
+          value: '${dataProvider.attendanceRate.toStringAsFixed(0)}%',
           label: appLocalizations.attendanceRate,
           context: context,
         ),
@@ -183,49 +203,57 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildMainContent(
-      BuildContext context, AppLocalizations appLocalizations, bool isRTL) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 3,
-          child: Column(
-            children: [
-              // Today's session
-              _buildTodaysSession(context, appLocalizations),
+      BuildContext context,
+      AppLocalizations appLocalizations,
+      bool isRTL,
+      AppDataProvider dataProvider) {
+    return Directionality(
+      textDirection: isRTL ? TextDirection.rtl : TextDirection.ltr,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 3,
+            child: Column(
+              children: [
+                // Today's session
+                _buildTodaysSession(context, appLocalizations, dataProvider),
 
-              // Recent attendance
-              const SizedBox(height: 20),
-              _buildRecentAttendance(context, appLocalizations),
-            ],
+                // Recent attendance
+                const SizedBox(height: 20),
+                _buildRecentAttendance(context, appLocalizations, dataProvider),
+              ],
+            ),
           ),
-        ),
 
-        // Sidebar
-        const SizedBox(width: 20),
-        Expanded(
-          flex: 1,
-          child: Column(
-            children: [
-              // Add new section
-              _buildAddNewSection(context, appLocalizations),
+          // Sidebar
+          const SizedBox(width: 20),
+          Expanded(
+            flex: 1,
+            child: Column(
+              children: [
+                // Add new section
+                _buildAddNewSection(context, appLocalizations),
 
-              // Upcoming sessions
-              const SizedBox(height: 20),
-              _buildUpcomingSessions(context, appLocalizations),
+                // Upcoming sessions
+                const SizedBox(height: 20),
+                _buildUpcomingSessions(context, appLocalizations, dataProvider),
 
-              // Pending payments
-              const SizedBox(height: 20),
-              _buildPendingPayments(context, appLocalizations),
-            ],
+                // Pending payments
+                const SizedBox(height: 20),
+                _buildPendingPayments(context, appLocalizations, dataProvider),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildTodaysSession(
-      BuildContext context, AppLocalizations appLocalizations) {
+  Widget _buildTodaysSession(BuildContext context,
+      AppLocalizations appLocalizations, AppDataProvider dataProvider) {
+    final session = dataProvider.todaySession;
+
     return Card(
       elevation: 4,
       child: Padding(
@@ -263,19 +291,18 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
             const SizedBox(height: 20),
-            _buildSessionCard(
-              title: "Advanced Sparring Session",
-              date: "Today, 6:00 PM - 8:00 PM",
-              description:
-                  "Focus on defensive techniques and counter-punching drills.",
-              participants: const [
-                {"name": "Mike Tyson", "paid": false},
-                {"name": "Muhammad Ali", "paid": true},
-                {"name": "Floyd Mayweather", "paid": false},
-                {"name": "George Foreman", "paid": false},
-                {"name": "Manny Pacquiao", "paid": true},
-              ],
-            ),
+            if (session == null)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: Text('No session scheduled for today.')),
+              )
+            else
+              _buildSessionCard(
+                title: session['title']?.toString() ?? 'Session',
+                date: '${session['sessionDate']} ${session['sessionTime']}',
+                description: session['notes']?.toString() ?? '',
+                participants: dataProvider.todaySessionParticipants,
+              ),
           ],
         ),
       ),
@@ -326,23 +353,27 @@ class _HomePageState extends State<HomePage> {
               spacing: 10,
               runSpacing: 10,
               children: participants.map((participant) {
+                final isPaid =
+                    participant['paid'] == true || participant['paid'] == 1;
+                final participantName =
+                    participant['participantName']?.toString() ??
+                        participant['name']?.toString() ??
+                        'Unknown';
                 return Chip(
-                  backgroundColor:
-                      participant['paid'] ? Colors.green[50] : Colors.blue[50],
+                  backgroundColor: isPaid ? Colors.green[50] : Colors.blue[50],
                   label: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        participant['paid'] ? Icons.check : Icons.person,
+                        isPaid ? Icons.check : Icons.person,
                         size: 16,
-                        color: participant['paid'] ? Colors.green : Colors.blue,
+                        color: isPaid ? Colors.green : Colors.blue,
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        participant['name'],
+                        participantName,
                         style: TextStyle(
-                          color:
-                              participant['paid'] ? Colors.green : Colors.blue,
+                          color: isPaid ? Colors.green : Colors.blue,
                         ),
                       ),
                     ],
@@ -356,45 +387,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildRecentAttendance(
-      BuildContext context, AppLocalizations appLocalizations) {
-    final attendanceData = [
-      {
-        "participant": "Mike Tyson",
-        "session": "Advanced Technique",
-        "date": "Jun 3, 2024",
-        "status": "attended",
-        "payment": "paid"
-      },
-      {
-        "participant": "Muhammad Ali",
-        "session": "Footwork Drills",
-        "date": "Jun 3, 2024",
-        "status": "attended",
-        "payment": "paid"
-      },
-      {
-        "participant": "George Foreman",
-        "session": "Strength Training",
-        "date": "Jun 2, 2024",
-        "status": "absent",
-        "payment": "pending"
-      },
-      {
-        "participant": "Floyd Mayweather",
-        "session": "Defense Techniques",
-        "date": "Jun 1, 2024",
-        "status": "attended",
-        "payment": "paid"
-      },
-      {
-        "participant": "Manny Pacquiao",
-        "session": "Speed Training",
-        "date": "May 31, 2024",
-        "status": "attended",
-        "payment": "paid"
-      },
-    ];
+  Widget _buildRecentAttendance(BuildContext context,
+      AppLocalizations appLocalizations, AppDataProvider dataProvider) {
+    final attendanceData = dataProvider.recentAttendance;
 
     return Card(
       elevation: 4,
@@ -429,9 +424,12 @@ class _HomePageState extends State<HomePage> {
                 ],
                 rows: attendanceData.map((data) {
                   return DataRow(cells: [
-                    DataCell(Text(data['participant'] ?? 'Unknown')),
-                    DataCell(Text(data['session'] ?? 'Unknown')),
-                    DataCell(Text(data['date'] ?? 'Unknown')),
+                    DataCell(
+                        Text(data['participantName']?.toString() ?? 'Unknown')),
+                    DataCell(
+                        Text(data['sessionTitle']?.toString() ?? 'Unknown')),
+                    DataCell(
+                        Text(data['sessionDate']?.toString() ?? 'Unknown')),
                     DataCell(
                       Chip(
                         backgroundColor: data['status'] == 'attended'
@@ -451,15 +449,15 @@ class _HomePageState extends State<HomePage> {
                     ),
                     DataCell(
                       Chip(
-                        backgroundColor: data['payment'] == 'paid'
+                        backgroundColor: data['paymentStatus'] == 'paid'
                             ? Colors.blue[50]
                             : Colors.orange[50],
                         label: Text(
-                          data['payment'] == 'paid'
+                          data['paymentStatus'] == 'paid'
                               ? appLocalizations.paid
                               : appLocalizations.pending,
                           style: TextStyle(
-                            color: data['payment'] == 'paid'
+                            color: data['paymentStatus'] == 'paid'
                                 ? Colors.blue
                                 : Colors.orange,
                           ),
@@ -555,30 +553,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildUpcomingSessions(
-      BuildContext context, AppLocalizations appLocalizations) {
-    final sessions = [
-      {
-        "title": "Beginner's Class",
-        "date": "Tomorrow, 5:00 PM",
-        "participants": "6"
-      },
-      {
-        "title": "Sparring Session",
-        "date": "Jun 7, 6:30 PM",
-        "participants": "8"
-      },
-      {
-        "title": "Conditioning & Fitness",
-        "date": "Jun 9, 10:00 AM",
-        "participants": "12"
-      },
-      {
-        "title": "Advanced Techniques",
-        "date": "Jun 11, 7:00 PM",
-        "participants": "5"
-      },
-    ];
+  Widget _buildUpcomingSessions(BuildContext context,
+      AppLocalizations appLocalizations, AppDataProvider dataProvider) {
+    final sessions = dataProvider.upcomingSessions;
 
     return Card(
       elevation: 4,
@@ -612,14 +589,14 @@ class _HomePageState extends State<HomePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            session['date']!,
+                            '${session['sessionDate']} ${session['sessionTime']}',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
                             ),
                           ),
                           Text(
-                            session['title']!,
+                            session['title']?.toString() ?? '',
                             style: const TextStyle(
                               color: Colors.grey,
                               fontSize: 12,
@@ -630,7 +607,7 @@ class _HomePageState extends State<HomePage> {
                       Chip(
                         backgroundColor: Colors.blue[50],
                         label: Text(
-                            "${session['participants']} ${appLocalizations.participants}"),
+                            "${session['participantsCount']} ${appLocalizations.participants}"),
                         labelStyle: const TextStyle(
                           fontSize: 12,
                         ),
@@ -646,25 +623,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildPendingPayments(
-      BuildContext context, AppLocalizations appLocalizations) {
-    final payments = [
-      {
-        "name": "George Foreman",
-        "description": "2 sessions overdue",
-        "amount": "\$120"
-      },
-      {
-        "name": "Evander Holyfield",
-        "description": "Monthly fee",
-        "amount": "\$200"
-      },
-      {
-        "name": "Joe Frazier",
-        "description": "Private session",
-        "amount": "\$80"
-      },
-    ];
+  Widget _buildPendingPayments(BuildContext context,
+      AppLocalizations appLocalizations, AppDataProvider dataProvider) {
+    final payments = dataProvider.pendingPayments;
 
     return Card(
       elevation: 4,
@@ -698,13 +659,13 @@ class _HomePageState extends State<HomePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            payment['name']!,
+                            payment['participantName']?.toString() ?? '',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
-                            payment['description']!,
+                            payment['description']?.toString() ?? '',
                             style: const TextStyle(
                               color: Colors.grey,
                             ),
@@ -714,7 +675,7 @@ class _HomePageState extends State<HomePage> {
                       Chip(
                         backgroundColor: Colors.orange[50],
                         label: Text(
-                          payment['amount']!,
+                          '\$${(payment['amount'] as num).toStringAsFixed(0)}',
                           style: const TextStyle(color: Colors.orange),
                         ),
                       ),
@@ -1019,10 +980,22 @@ class _HomePageState extends State<HomePage> {
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8)),
                             ),
-                            onPressed: () {
+                            onPressed: () async {
                               if (formKey.currentState!.validate()) {
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                final navigator = Navigator.of(context);
+                                final messenger = ScaffoldMessenger.of(context);
+                                await context
+                                    .read<AppDataProvider>()
+                                    .addParticipant(
+                                      name: nameController.text.trim(),
+                                      phone: phoneController.text.trim(),
+                                      age: int.parse(ageController.text.trim()),
+                                      weightClass: selectedWeightClass,
+                                      paymentMethod: selectedPaymentMethod,
+                                      notes: notesController.text.trim(),
+                                    );
+                                navigator.pop();
+                                messenger.showSnackBar(
                                   SnackBar(
                                     content: Row(
                                       children: [
@@ -1095,19 +1068,10 @@ class _HomePageState extends State<HomePage> {
   void _showScheduleSessionDialog(BuildContext context) {
     final formKey = GlobalKey<FormState>();
     final titleController = TextEditingController();
+    final sessionTypeController = TextEditingController();
     final dateController = TextEditingController();
     final timeController = TextEditingController();
     final durationController = TextEditingController();
-    String selectedType = 'Sparring';
-
-    final sessionTypes = [
-      'Sparring',
-      'Technique',
-      'Conditioning',
-      'Private Coaching',
-      'Kids Class',
-      'Beginner Class',
-    ];
 
     showDialog(
       context: context,
@@ -1204,22 +1168,16 @@ class _HomePageState extends State<HomePage> {
                                       children: [
                                         _dialogFieldLabel('Session Type'),
                                         const SizedBox(height: 6),
-                                        DropdownButtonFormField<String>(
-                                          initialValue: selectedType,
+                                        TextFormField(
+                                          controller: sessionTypeController,
                                           decoration: _dialogInputDecoration(
-                                            hint: '',
+                                            hint: 'e.g. Group Training',
                                             icon: Icons.sports_mma,
                                           ),
-                                          isExpanded: true,
-                                          items: sessionTypes
-                                              .map((s) => DropdownMenuItem(
-                                                  value: s,
-                                                  child: Text(s,
-                                                      style: const TextStyle(
-                                                          fontSize: 13))))
-                                              .toList(),
-                                          onChanged: (v) => setDialogState(
-                                              () => selectedType = v!),
+                                          validator: (v) =>
+                                              (v == null || v.trim().isEmpty)
+                                                  ? 'Required'
+                                                  : null,
                                         ),
                                       ],
                                     ),
@@ -1365,10 +1323,25 @@ class _HomePageState extends State<HomePage> {
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8)),
                             ),
-                            onPressed: () {
+                            onPressed: () async {
                               if (formKey.currentState!.validate()) {
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                final navigator = Navigator.of(context);
+                                final messenger = ScaffoldMessenger.of(context);
+                                await context
+                                    .read<AppDataProvider>()
+                                    .addSession(
+                                      title: titleController.text.trim(),
+                                      sessionType:
+                                          sessionTypeController.text.trim(),
+                                      durationMinutes: int.tryParse(
+                                            durationController.text.trim(),
+                                          ) ??
+                                          0,
+                                      sessionDate: dateController.text.trim(),
+                                      sessionTime: timeController.text.trim(),
+                                    );
+                                navigator.pop();
+                                messenger.showSnackBar(
                                   SnackBar(
                                     content: Text(
                                         '${titleController.text.trim()} scheduled!'),
@@ -1395,16 +1368,10 @@ class _HomePageState extends State<HomePage> {
   void _showRecordPaymentDialog(BuildContext context) {
     final formKey = GlobalKey<FormState>();
     final amountController = TextEditingController();
-    String selectedParticipant = 'Mike Tyson';
     String selectedPaymentMethod = 'Cash';
-
-    final mockParticipants = [
-      'Mike Tyson',
-      'Muhammad Ali',
-      'Floyd Mayweather',
-      'George Foreman',
-      'Manny Pacquiao',
-    ];
+    final participantNames = context.read<AppDataProvider>().participantNames;
+    String? selectedParticipant =
+        participantNames.isNotEmpty ? participantNames.first : null;
 
     final paymentMethods = [
       'Cash',
@@ -1492,16 +1459,22 @@ class _HomePageState extends State<HomePage> {
                                   hint: '',
                                   icon: Icons.person,
                                 ),
+                                disabledHint: const Text(
+                                  'No participants yet',
+                                  style: TextStyle(fontSize: 13),
+                                ),
                                 isExpanded: true,
-                                items: mockParticipants
+                                items: participantNames
                                     .map((p) => DropdownMenuItem(
                                         value: p,
                                         child: Text(p,
                                             style:
                                                 const TextStyle(fontSize: 13))))
                                     .toList(),
-                                onChanged: (v) => setDialogState(
-                                    () => selectedParticipant = v!),
+                                onChanged: participantNames.isEmpty
+                                    ? null
+                                    : (v) => setDialogState(
+                                        () => selectedParticipant = v),
                               ),
                               const SizedBox(height: 16),
                               Row(
@@ -1586,10 +1559,34 @@ class _HomePageState extends State<HomePage> {
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8)),
                             ),
-                            onPressed: () {
+                            onPressed: () async {
                               if (formKey.currentState!.validate()) {
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                if (selectedParticipant == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Add a participant first to record payment.'),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                final navigator = Navigator.of(context);
+                                final messenger = ScaffoldMessenger.of(context);
+                                await context
+                                    .read<AppDataProvider>()
+                                    .addPayment(
+                                      participantName: selectedParticipant!,
+                                      amount: double.tryParse(
+                                            amountController.text.trim(),
+                                          ) ??
+                                          0,
+                                      description: 'Payment recorded',
+                                      method: selectedPaymentMethod,
+                                      status: 'paid',
+                                    );
+                                navigator.pop();
+                                messenger.showSnackBar(
                                   SnackBar(
                                     content: Text(
                                         'Payment of \$${amountController.text} from $selectedParticipant recorded.'),
@@ -1614,23 +1611,22 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showTakeAttendanceDialog(BuildContext context) {
-    String selectedSession = 'Advanced Sparring (Today)';
-    String selectedParticipant = 'George Foreman';
+    final dataProvider = context.read<AppDataProvider>();
+    final sessionTitles = <String>{
+      if (dataProvider.todaySession != null)
+        dataProvider.todaySession!['title']?.toString() ?? '',
+      ...dataProvider.upcomingSessions
+          .map((session) => session['title']?.toString() ?? ''),
+    }.where((title) => title.trim().isNotEmpty).toList()
+      ..sort();
+
+    String? selectedSession =
+        sessionTitles.isNotEmpty ? sessionTitles.first : null;
     String selectedStatus = 'Present';
 
-    final mockSessions = [
-      'Advanced Sparring (Today)',
-      'Beginner Class (Tomorrow)',
-      'Conditioning (Wednesday)',
-    ];
-
-    final mockParticipants = [
-      'Mike Tyson',
-      'Muhammad Ali',
-      'Floyd Mayweather',
-      'George Foreman',
-      'Manny Pacquiao',
-    ];
+    final participantNames = dataProvider.participantNames;
+    String? selectedParticipant =
+        participantNames.isNotEmpty ? participantNames.first : null;
 
     final statusOptions = ['Present', 'Absent', 'Late', 'Excused'];
 
@@ -1711,16 +1707,22 @@ class _HomePageState extends State<HomePage> {
                                 hint: '',
                                 icon: Icons.sports_mma,
                               ),
+                              disabledHint: const Text(
+                                'No sessions yet',
+                                style: TextStyle(fontSize: 13),
+                              ),
                               isExpanded: true,
-                              items: mockSessions
+                              items: sessionTitles
                                   .map((s) => DropdownMenuItem(
                                       value: s,
                                       child: Text(s,
                                           style:
                                               const TextStyle(fontSize: 13))))
                                   .toList(),
-                              onChanged: (v) =>
-                                  setDialogState(() => selectedSession = v!),
+                              onChanged: sessionTitles.isEmpty
+                                  ? null
+                                  : (v) =>
+                                      setDialogState(() => selectedSession = v),
                             ),
                             const SizedBox(height: 16),
                             Row(
@@ -1739,16 +1741,22 @@ class _HomePageState extends State<HomePage> {
                                           hint: '',
                                           icon: Icons.person,
                                         ),
+                                        disabledHint: const Text(
+                                          'No participants yet',
+                                          style: TextStyle(fontSize: 13),
+                                        ),
                                         isExpanded: true,
-                                        items: mockParticipants
+                                        items: participantNames
                                             .map((p) => DropdownMenuItem(
                                                 value: p,
                                                 child: Text(p,
                                                     style: const TextStyle(
                                                         fontSize: 13))))
                                             .toList(),
-                                        onChanged: (v) => setDialogState(
-                                            () => selectedParticipant = v!),
+                                        onChanged: participantNames.isEmpty
+                                            ? null
+                                            : (v) => setDialogState(
+                                                () => selectedParticipant = v),
                                       ),
                                     ],
                                   ),
@@ -1810,9 +1818,45 @@ class _HomePageState extends State<HomePage> {
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8)),
                             ),
-                            onPressed: () {
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
+                            onPressed: () async {
+                              if (selectedParticipant == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Add a participant first to record attendance.'),
+                                  ),
+                                );
+                                return;
+                              }
+                              if (selectedSession == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Create a session first to record attendance.'),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              final navigator = Navigator.of(context);
+                              final messenger = ScaffoldMessenger.of(context);
+                              await context
+                                  .read<AppDataProvider>()
+                                  .addAttendance(
+                                    participantName: selectedParticipant!,
+                                    sessionTitle: selectedSession!,
+                                    sessionDate: DateTime.now()
+                                        .toIso8601String()
+                                        .substring(0, 10),
+                                    status: selectedStatus == 'Present'
+                                        ? 'attended'
+                                        : 'absent',
+                                    paymentStatus: selectedStatus == 'Present'
+                                        ? 'paid'
+                                        : 'pending',
+                                  );
+                              navigator.pop();
+                              messenger.showSnackBar(
                                 SnackBar(
                                   content: Text(
                                       '$selectedParticipant marked $selectedStatus.'),
@@ -1917,6 +1961,18 @@ class _HomePageState extends State<HomePage> {
                   _showTakeAttendanceDialog(context);
                 },
               ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFFFEBEE),
+                  child: Icon(Icons.backup, color: Color(0xFFD32F2F)),
+                ),
+                title: const Text('Backup Database',
+                    style: TextStyle(fontWeight: FontWeight.w500)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _backupDatabase(context);
+                },
+              ),
               const SizedBox(height: 16),
             ],
           ),
@@ -1966,5 +2022,34 @@ class _HomePageState extends State<HomePage> {
         );
       },
     );
+  }
+
+  Future<void> _backupDatabase(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final backupFile = await context.read<AppDataProvider>().createBackup();
+      if (!mounted) {
+        return;
+      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Backup saved to ${backupFile.path}'),
+          action: SnackBarAction(
+            label: 'Copy',
+            onPressed: () => Clipboard.setData(
+              ClipboardData(text: backupFile.path),
+            ),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Backup failed: $error')),
+      );
+    }
   }
 }
