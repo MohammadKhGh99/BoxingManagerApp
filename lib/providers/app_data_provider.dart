@@ -87,6 +87,27 @@ class AppDataProvider extends ChangeNotifier {
     await refresh();
   }
 
+  Future<void> updateParticipant({
+    required int id,
+    required String name,
+    required String phone,
+    required int age,
+    required String weightClass,
+    required String paymentMethod,
+    required String notes,
+  }) async {
+    await _database.updateParticipant(
+      id: id,
+      name: name,
+      phone: phone,
+      age: age,
+      weightClass: weightClass,
+      paymentMethod: paymentMethod,
+      notes: notes,
+    );
+    await refresh();
+  }
+
   Future<void> addSession({
     required String title,
     required String sessionType,
@@ -95,6 +116,25 @@ class AppDataProvider extends ChangeNotifier {
     required String sessionTime,
   }) async {
     await _database.addSession(
+      title: title,
+      sessionType: sessionType,
+      durationMinutes: durationMinutes,
+      sessionDate: sessionDate,
+      sessionTime: sessionTime,
+    );
+    await refresh();
+  }
+
+  Future<void> updateSession({
+    required int id,
+    required String title,
+    required String sessionType,
+    required int durationMinutes,
+    required String sessionDate,
+    required String sessionTime,
+  }) async {
+    await _database.updateSession(
+      id: id,
       title: title,
       sessionType: sessionType,
       durationMinutes: durationMinutes,
@@ -121,6 +161,36 @@ class AppDataProvider extends ChangeNotifier {
     await refresh();
   }
 
+  Future<void> updatePaymentStatus({
+    required int id,
+    required String status,
+  }) async {
+    await _database.updatePaymentStatus(
+      id: id,
+      status: status,
+    );
+    await refresh();
+  }
+
+  Future<void> updatePayment({
+    required int id,
+    required String participantName,
+    required double amount,
+    required String description,
+    required String method,
+    required String status,
+  }) async {
+    await _database.updatePayment(
+      id: id,
+      participantName: participantName,
+      amount: amount,
+      description: description,
+      method: method,
+      status: status,
+    );
+    await refresh();
+  }
+
   Future<void> addAttendance({
     required String participantName,
     required String sessionTitle,
@@ -136,6 +206,18 @@ class AppDataProvider extends ChangeNotifier {
       paymentStatus: paymentStatus,
     );
     await refresh();
+  }
+
+  Future<List<Map<String, dynamic>>> allParticipants() {
+    return _database.allParticipants();
+  }
+
+  Future<List<Map<String, dynamic>>> allSessions() {
+    return _database.allSessions();
+  }
+
+  Future<List<Map<String, dynamic>>> allPayments() {
+    return _database.allPayments();
   }
 
   Future<File> createBackup() async {

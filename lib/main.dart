@@ -18,19 +18,7 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   }
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (context) => LocaleProvider(),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => AppDataProvider()..initialize(),
-        ),
-      ],
-      child: const BoxingCoachApp(),
-    ),
-  );
+  runApp(const BoxingCoachApp());
 }
 
 class BoxingCoachApp extends StatelessWidget {
@@ -38,27 +26,41 @@ class BoxingCoachApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final localeProvider = Provider.of<LocaleProvider>(context);
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => LocaleProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AppDataProvider()..initialize(),
+        ),
+      ],
+      child: Builder(
+        builder: (context) {
+          final localeProvider = context.watch<LocaleProvider>();
 
-    return MaterialApp(
-      title: 'Boxing Coach Manager',
-      theme: ThemeData(
-        primarySwatch: Colors.red,
-        fontFamily: 'Segoe UI',
+          return MaterialApp(
+            title: 'Boxing Coach Manager',
+            theme: ThemeData(
+              primarySwatch: Colors.red,
+              fontFamily: 'Segoe UI',
+            ),
+            locale: localeProvider.locale,
+            supportedLocales: const [
+              Locale('en', 'US'), // English
+              Locale('ar', 'SA'), // Arabic
+              Locale('he', 'IL'), // Hebrew
+            ],
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: const HomePage(),
+          );
+        },
       ),
-      locale: localeProvider.locale,
-      supportedLocales: const [
-        Locale('en', 'US'), // English
-        Locale('ar', 'SA'), // Arabic
-        Locale('he', 'IL'), // Hebrew
-      ],
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      home: const HomePage(),
     );
   }
 }

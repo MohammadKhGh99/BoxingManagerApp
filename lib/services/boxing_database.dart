@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -114,7 +115,7 @@ class BoxingDatabase {
     required String notes,
   }) async {
     final db = await database;
-    return db.insert('participants', {
+    final participantId = await db.insert('participants', {
       'name': name,
       'phone': phone,
       'age': age,
@@ -123,6 +124,40 @@ class BoxingDatabase {
       'notes': notes,
       'createdAt': DateTime.now().toIso8601String(),
     });
+
+    await addPendingPayment(
+      participantName: name,
+      amount: 0,
+      description: 'Enrollment fee pending',
+      method: paymentMethod,
+    );
+
+    return participantId;
+  }
+
+  Future<int> updateParticipant({
+    required int id,
+    required String name,
+    required String phone,
+    required int age,
+    required String weightClass,
+    required String paymentMethod,
+    required String notes,
+  }) async {
+    final db = await database;
+    return db.update(
+      'participants',
+      {
+        'name': name,
+        'phone': phone,
+        'age': age,
+        'weightClass': weightClass,
+        'paymentMethod': paymentMethod,
+        'notes': notes,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   Future<int> addSession({
@@ -144,6 +179,29 @@ class BoxingDatabase {
     });
   }
 
+  Future<int> updateSession({
+    required int id,
+    required String title,
+    required String sessionType,
+    required int durationMinutes,
+    required String sessionDate,
+    required String sessionTime,
+  }) async {
+    final db = await database;
+    return db.update(
+      'sessions',
+      {
+        'title': title,
+        'sessionType': sessionType,
+        'durationMinutes': durationMinutes,
+        'sessionDate': sessionDate,
+        'sessionTime': sessionTime,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<int> addPayment({
     required String participantName,
     required double amount,
@@ -152,6 +210,33 @@ class BoxingDatabase {
     required String status,
   }) async {
     final db = await database;
+
+    if (status == 'paid') {
+      final pendingPayment = await db.query(
+        'payments',
+        where: 'participantName = ? AND status = ?',
+        whereArgs: [participantName, 'pending'],
+        orderBy: 'createdAt ASC, id ASC',
+        limit: 1,
+      );
+
+      if (pendingPayment.isNotEmpty) {
+        final paymentId = pendingPayment.first['id'] as int;
+        return db.update(
+          'payments',
+          {
+            'amount': amount,
+            'description': description,
+            'method': method,
+            'status': 'paid',
+            'createdAt': DateTime.now().toIso8601String(),
+          },
+          where: 'id = ?',
+          whereArgs: [paymentId],
+        );
+      }
+    }
+
     return db.insert('payments', {
       'participantName': participantName,
       'amount': amount,
@@ -160,6 +245,63 @@ class BoxingDatabase {
       'status': status,
       'createdAt': DateTime.now().toIso8601String(),
     });
+  }
+
+  Future<int> addPendingPayment({
+    required String participantName,
+    required double amount,
+    required String description,
+    required String method,
+  }) async {
+    final db = await database;
+    return db.insert('payments', {
+      'participantName': participantName,
+      'amount': amount,
+      'description': description,
+      'method': method,
+      'status': 'pending',
+      'createdAt': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<int> updatePaymentStatus({
+    required int id,
+    required String status,
+  }) async {
+    final db = await database;
+    return db.update(
+      'payments',
+      {
+        'status': status,
+        'createdAt': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<int> updatePayment({
+    required int id,
+    required String participantName,
+    required double amount,
+    required String description,
+    required String method,
+    required String status,
+  }) async {
+    final db = await database;
+    return db.update(
+      'payments',
+      {
+        'participantName': participantName,
+        'amount': amount,
+        'description': description,
+        'method': method,
+        'status': status,
+        'createdAt': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   Future<int> addAttendance({
@@ -262,6 +404,35 @@ class BoxingDatabase {
     );
   }
 
+  Future<List<Map<String, dynamic>>> allParticipants() async {
+    final db = await database;
+    return db.query(
+      'participants',
+      orderBy: 'id ASC',
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> allSessions() async {
+    final db = await database;
+    return db.rawQuery(
+      '''
+      SELECT
+        s.id,
+        s.title,
+        s.sessionDate,
+        s.sessionTime,
+        s.sessionType,
+        s.durationMinutes,
+        s.notes,
+        COALESCE(COUNT(sp.id), 0) AS participantsCount
+      FROM sessions s
+      LEFT JOIN session_participants sp ON sp.sessionId = s.id
+      GROUP BY s.id
+      ORDER BY s.sessionDate ASC, s.sessionTime ASC, s.id ASC
+      ''',
+    );
+  }
+
   Future<List<Map<String, dynamic>>> recentAttendance({int limit = 5}) async {
     final db = await database;
     return db.query(
@@ -274,7 +445,7 @@ class BoxingDatabase {
   Future<List<Map<String, dynamic>>> upcomingSessions({int limit = 4}) async {
     final db = await database;
     final today = _formatDate(DateTime.now());
-    return db.rawQuery(
+    final rows = await db.rawQuery(
       '''
       SELECT
         s.id,
@@ -286,13 +457,35 @@ class BoxingDatabase {
         COALESCE(COUNT(sp.id), 0) AS participantsCount
       FROM sessions s
       LEFT JOIN session_participants sp ON sp.sessionId = s.id
-      WHERE s.sessionDate > ?
+      WHERE s.sessionDate >= ?
       GROUP BY s.id
       ORDER BY s.sessionDate ASC, s.sessionTime ASC
-      LIMIT ?
       ''',
-      [today, limit],
+      [today],
     );
+
+    final now = DateTime.now();
+    final upcomingRows = rows.where((row) {
+      final sessionDateTime = _parseSessionDateTime(row);
+      return sessionDateTime != null && !sessionDateTime.isBefore(now);
+    }).toList()
+      ..sort((a, b) {
+        final aDateTime = _parseSessionDateTime(a);
+        final bDateTime = _parseSessionDateTime(b);
+
+        if (aDateTime == null && bDateTime == null) {
+          return 0;
+        }
+        if (aDateTime == null) {
+          return 1;
+        }
+        if (bDateTime == null) {
+          return -1;
+        }
+        return aDateTime.compareTo(bDateTime);
+      });
+
+    return upcomingRows.take(limit).toList();
   }
 
   Future<List<Map<String, dynamic>>> pendingPayments({int limit = 3}) async {
@@ -303,6 +496,14 @@ class BoxingDatabase {
       whereArgs: ['pending'],
       orderBy: 'createdAt DESC, id DESC',
       limit: limit,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> allPayments() async {
+    final db = await database;
+    return db.query(
+      'payments',
+      orderBy: 'createdAt DESC, id DESC',
     );
   }
 
@@ -344,5 +545,54 @@ class BoxingDatabase {
 
   String _formatDate(DateTime dateTime) {
     return '${dateTime.year.toString().padLeft(4, '0')}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}';
+  }
+
+  DateTime? _parseSessionDateTime(Map<String, Object?> row) {
+    final sessionDateText = row['sessionDate']?.toString().trim();
+    final sessionTimeText = row['sessionTime']?.toString().trim();
+
+    if (sessionDateText == null ||
+        sessionDateText.isEmpty ||
+        sessionTimeText == null ||
+        sessionTimeText.isEmpty) {
+      return null;
+    }
+
+    final sessionDate = DateTime.tryParse(sessionDateText);
+    if (sessionDate == null) {
+      return null;
+    }
+
+    final parsedTime = _parseSessionTime(sessionTimeText);
+    if (parsedTime == null) {
+      return null;
+    }
+
+    return DateTime(
+      sessionDate.year,
+      sessionDate.month,
+      sessionDate.day,
+      parsedTime.hour,
+      parsedTime.minute,
+    );
+  }
+
+  DateTime? _parseSessionTime(String sessionTimeText) {
+    final candidateFormats = [
+      DateFormat.jm(),
+      DateFormat.Hm(),
+      DateFormat('h:mm a'),
+      DateFormat('hh:mm a'),
+    ];
+
+    for (final format in candidateFormats) {
+      try {
+        return format.parseStrict(sessionTimeText);
+      } catch (_) {
+        // Try the next known time format.
+      }
+    }
+
+    return null;
   }
 }

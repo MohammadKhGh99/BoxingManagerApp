@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart' as intl;
 import 'package:boxing_coach_manager/app_localizations.dart';
 import 'package:boxing_coach_manager/providers/app_data_provider.dart';
 import 'package:boxing_coach_manager/locale_provider.dart';
@@ -521,6 +522,12 @@ class _HomePageState extends State<HomePage> {
                   icon: Icons.checklist,
                   text: appLocalizations.takeAttendance,
                   onPressed: () => _showTakeAttendanceDialog(context),
+                ),
+                const SizedBox(height: 10),
+                _buildAddButton(
+                  icon: Icons.manage_search,
+                  text: 'Manage Data',
+                  onPressed: () => _showManageDataDialog(context),
                 ),
               ],
             ),
@@ -1581,7 +1588,7 @@ class _HomePageState extends State<HomePage> {
                                             amountController.text.trim(),
                                           ) ??
                                           0,
-                                      description: 'Payment recorded',
+                                      description: 'Payment marked as paid',
                                       method: selectedPaymentMethod,
                                       status: 'paid',
                                     );
@@ -1589,7 +1596,7 @@ class _HomePageState extends State<HomePage> {
                                 messenger.showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                        'Payment of \$${amountController.text} from $selectedParticipant recorded.'),
+                                        'Payment of \$${amountController.text} from $selectedParticipant marked as paid.'),
                                     backgroundColor: Colors.green[700],
                                     behavior: SnackBarBehavior.floating,
                                   ),
@@ -1610,25 +1617,55 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _showTakeAttendanceDialog(BuildContext context) {
+  Future<void> _showTakeAttendanceDialog(BuildContext context) async {
     final dataProvider = context.read<AppDataProvider>();
-    final sessionTitles = <String>{
-      if (dataProvider.todaySession != null)
-        dataProvider.todaySession!['title']?.toString() ?? '',
-      ...dataProvider.upcomingSessions
-          .map((session) => session['title']?.toString() ?? ''),
-    }.where((title) => title.trim().isNotEmpty).toList()
-      ..sort();
+    final allSessions = await dataProvider.allSessions();
+    if (!context.mounted) {
+      return;
+    }
 
-    String? selectedSession =
-        sessionTitles.isNotEmpty ? sessionTitles.first : null;
-    String selectedStatus = 'Present';
+    final now = DateTime.now();
+    final eligibleSessions = allSessions
+        .where((session) => _isSessionEligibleForAttendance(session, now))
+        .toList()
+      ..sort((a, b) {
+        final aDateTime = _sessionDateTime(a);
+        final bDateTime = _sessionDateTime(b);
+        if (aDateTime == null && bDateTime == null) {
+          return 0;
+        }
+        if (aDateTime == null) {
+          return 1;
+        }
+        if (bDateTime == null) {
+          return -1;
+        }
+        return aDateTime.compareTo(bDateTime);
+      });
+
+    if (eligibleSessions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('No past or current sessions are available for attendance.'),
+        ),
+      );
+      return;
+    }
 
     final participantNames = dataProvider.participantNames;
     String? selectedParticipant =
         participantNames.isNotEmpty ? participantNames.first : null;
+    int? selectedSessionId = eligibleSessions.first['id'] as int?;
+    String selectedStatus = 'Present';
+    String selectedPaymentStatus = 'pending';
 
     final statusOptions = ['Present', 'Absent', 'Late', 'Excused'];
+    final paymentStatusOptions = ['pending', 'paid'];
+
+    if (!context.mounted) {
+      return;
+    }
 
     showDialog(
       context: context,
@@ -1636,19 +1673,27 @@ class _HomePageState extends State<HomePage> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final selectedSession = eligibleSessions.firstWhere(
+              (session) => session['id'] == selectedSessionId,
+              orElse: () => eligibleSessions.first,
+            );
+
             return Dialog(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                borderRadius: BorderRadius.circular(16),
+              ),
               clipBehavior: Clip.antiAlias,
               child: SizedBox(
-                width: 500,
+                width: 540,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 20),
+                        horizontal: 24,
+                        vertical: 20,
+                      ),
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
                           colors: [Color(0xFFD32F2F), Color(0xFF9A0007)],
@@ -1680,7 +1725,9 @@ class _HomePageState extends State<HomePage> {
                               Text(
                                 'Record presence for a session',
                                 style: TextStyle(
-                                    color: Colors.white70, fontSize: 13),
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
                               ),
                             ],
                           ),
@@ -1701,28 +1748,26 @@ class _HomePageState extends State<HomePage> {
                           children: [
                             _dialogFieldLabel('Session'),
                             const SizedBox(height: 6),
-                            DropdownButtonFormField<String>(
-                              initialValue: selectedSession,
+                            DropdownButtonFormField<int>(
+                              value: selectedSessionId,
                               decoration: _dialogInputDecoration(
                                 hint: '',
                                 icon: Icons.sports_mma,
                               ),
-                              disabledHint: const Text(
-                                'No sessions yet',
-                                style: TextStyle(fontSize: 13),
-                              ),
                               isExpanded: true,
-                              items: sessionTitles
-                                  .map((s) => DropdownMenuItem(
-                                      value: s,
-                                      child: Text(s,
-                                          style:
-                                              const TextStyle(fontSize: 13))))
-                                  .toList(),
-                              onChanged: sessionTitles.isEmpty
-                                  ? null
-                                  : (v) =>
-                                      setDialogState(() => selectedSession = v),
+                              items: eligibleSessions.map((session) {
+                                final sessionId = session['id'] as int?;
+                                return DropdownMenuItem<int>(
+                                  value: sessionId,
+                                  child: Text(
+                                    '#${sessionId ?? '-'} ${session['title'] ?? ''} • ${session['sessionDate'] ?? ''} ${session['sessionTime'] ?? ''}',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setDialogState(() => selectedSessionId = value);
+                              },
                             ),
                             const SizedBox(height: 16),
                             Row(
@@ -1736,7 +1781,7 @@ class _HomePageState extends State<HomePage> {
                                       _dialogFieldLabel('Participant'),
                                       const SizedBox(height: 6),
                                       DropdownButtonFormField<String>(
-                                        initialValue: selectedParticipant,
+                                        value: selectedParticipant,
                                         decoration: _dialogInputDecoration(
                                           hint: '',
                                           icon: Icons.person,
@@ -1747,16 +1792,21 @@ class _HomePageState extends State<HomePage> {
                                         ),
                                         isExpanded: true,
                                         items: participantNames
-                                            .map((p) => DropdownMenuItem(
-                                                value: p,
-                                                child: Text(p,
-                                                    style: const TextStyle(
-                                                        fontSize: 13))))
+                                            .map(
+                                              (participant) => DropdownMenuItem(
+                                                value: participant,
+                                                child: Text(
+                                                  participant,
+                                                  style: const TextStyle(
+                                                      fontSize: 13),
+                                                ),
+                                              ),
+                                            )
                                             .toList(),
                                         onChanged: participantNames.isEmpty
                                             ? null
-                                            : (v) => setDialogState(
-                                                () => selectedParticipant = v),
+                                            : (value) => setDialogState(() =>
+                                                selectedParticipant = value),
                                       ),
                                     ],
                                   ),
@@ -1771,26 +1821,59 @@ class _HomePageState extends State<HomePage> {
                                       _dialogFieldLabel('Status'),
                                       const SizedBox(height: 6),
                                       DropdownButtonFormField<String>(
-                                        initialValue: selectedStatus,
+                                        value: selectedStatus,
                                         decoration: _dialogInputDecoration(
                                           hint: '',
                                           icon: Icons.flag,
                                         ),
                                         isExpanded: true,
                                         items: statusOptions
-                                            .map((o) => DropdownMenuItem(
-                                                value: o,
-                                                child: Text(o,
-                                                    style: const TextStyle(
-                                                        fontSize: 13))))
+                                            .map(
+                                              (option) => DropdownMenuItem(
+                                                value: option,
+                                                child: Text(
+                                                  option,
+                                                  style: const TextStyle(
+                                                      fontSize: 13),
+                                                ),
+                                              ),
+                                            )
                                             .toList(),
-                                        onChanged: (v) => setDialogState(
-                                            () => selectedStatus = v!),
+                                        onChanged: (value) {
+                                          setDialogState(
+                                              () => selectedStatus = value!);
+                                        },
                                       ),
                                     ],
                                   ),
                                 ),
                               ],
+                            ),
+                            const SizedBox(height: 16),
+                            _dialogFieldLabel('Payment Status'),
+                            const SizedBox(height: 6),
+                            DropdownButtonFormField<String>(
+                              value: selectedPaymentStatus,
+                              decoration: _dialogInputDecoration(
+                                hint: '',
+                                icon: Icons.payments,
+                              ),
+                              isExpanded: true,
+                              items: paymentStatusOptions
+                                  .map(
+                                    (option) => DropdownMenuItem(
+                                      value: option,
+                                      child: Text(
+                                        option,
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) {
+                                setDialogState(
+                                    () => selectedPaymentStatus = value!);
+                              },
                             ),
                           ],
                         ),
@@ -1803,8 +1886,10 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel',
-                                style: TextStyle(color: Colors.grey)),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(color: Colors.grey),
+                            ),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton.icon(
@@ -1814,29 +1899,40 @@ class _HomePageState extends State<HomePage> {
                               backgroundColor: const Color(0xFFD32F2F),
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 12),
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
                             onPressed: () async {
                               if (selectedParticipant == null) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                        'Add a participant first to record attendance.'),
+                                      'Add a participant first to record attendance.',
+                                    ),
                                   ),
                                 );
                                 return;
                               }
-                              if (selectedSession == null) {
+                              if (selectedSessionId == null) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                        'Create a session first to record attendance.'),
+                                      'Select a valid current or past session.',
+                                    ),
                                   ),
                                 );
                                 return;
                               }
+
+                              final selectedSessionTitle =
+                                  selectedSession['title']?.toString() ?? '';
+                              final selectedSessionDate =
+                                  selectedSession['sessionDate']?.toString() ??
+                                      '';
 
                               final navigator = Navigator.of(context);
                               final messenger = ScaffoldMessenger.of(context);
@@ -1844,22 +1940,17 @@ class _HomePageState extends State<HomePage> {
                                   .read<AppDataProvider>()
                                   .addAttendance(
                                     participantName: selectedParticipant!,
-                                    sessionTitle: selectedSession!,
-                                    sessionDate: DateTime.now()
-                                        .toIso8601String()
-                                        .substring(0, 10),
-                                    status: selectedStatus == 'Present'
-                                        ? 'attended'
-                                        : 'absent',
-                                    paymentStatus: selectedStatus == 'Present'
-                                        ? 'paid'
-                                        : 'pending',
+                                    sessionTitle: selectedSessionTitle,
+                                    sessionDate: selectedSessionDate,
+                                    status: selectedStatus.toLowerCase(),
+                                    paymentStatus: selectedPaymentStatus,
                                   );
                               navigator.pop();
                               messenger.showSnackBar(
                                 SnackBar(
                                   content: Text(
-                                      '$selectedParticipant marked $selectedStatus.'),
+                                    '$selectedParticipant marked $selectedStatus for $selectedSessionTitle.',
+                                  ),
                                   backgroundColor: Colors.green[700],
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -1877,6 +1968,1335 @@ class _HomePageState extends State<HomePage> {
         );
       },
     );
+  }
+
+  bool _isSessionEligibleForAttendance(
+      Map<String, dynamic> session, DateTime now) {
+    final sessionDateTime = _sessionDateTime(session);
+    return sessionDateTime != null && !sessionDateTime.isAfter(now);
+  }
+
+  DateTime? _sessionDateTime(Map<String, dynamic> session) {
+    final sessionDateText = session['sessionDate']?.toString().trim();
+    final sessionTimeText = session['sessionTime']?.toString().trim();
+
+    if (sessionDateText == null ||
+        sessionDateText.isEmpty ||
+        sessionTimeText == null ||
+        sessionTimeText.isEmpty) {
+      return null;
+    }
+
+    final sessionDate = DateTime.tryParse(sessionDateText);
+    if (sessionDate == null) {
+      return null;
+    }
+
+    final candidateFormats = [
+      intl.DateFormat.jm(),
+      intl.DateFormat.Hm(),
+      intl.DateFormat('h:mm a'),
+      intl.DateFormat('hh:mm a'),
+    ];
+
+    DateTime? parsedTime;
+    for (final format in candidateFormats) {
+      try {
+        parsedTime = format.parseStrict(sessionTimeText);
+        break;
+      } catch (_) {
+        continue;
+      }
+    }
+
+    if (parsedTime == null) {
+      return null;
+    }
+
+    return DateTime(
+      sessionDate.year,
+      sessionDate.month,
+      sessionDate.day,
+      parsedTime.hour,
+      parsedTime.minute,
+    );
+  }
+
+  Future<void> _showManageDataDialog(BuildContext context) async {
+    final dataProvider = context.read<AppDataProvider>();
+
+    Future<Map<String, List<Map<String, dynamic>>>> loadData() async {
+      final results = await Future.wait([
+        dataProvider.allParticipants(),
+        dataProvider.allSessions(),
+        dataProvider.allPayments(),
+      ]);
+      return {
+        'participants':
+            List<Map<String, dynamic>>.from(results[0] as List<dynamic>),
+        'sessions':
+            List<Map<String, dynamic>>.from(results[1] as List<dynamic>),
+        'payments':
+            List<Map<String, dynamic>>.from(results[2] as List<dynamic>),
+      };
+    }
+
+    late Future<Map<String, List<Map<String, dynamic>>>> loadFuture =
+        loadData();
+
+    if (!context.mounted) {
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SizedBox(
+                width: 820,
+                height: 620,
+                child: DefaultTabController(
+                  length: 3,
+                  child: Column(
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 20,
+                        ),
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFD32F2F), Color(0xFF9A0007)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const CircleAvatar(
+                              backgroundColor: Colors.white24,
+                              radius: 22,
+                              child: Icon(Icons.manage_accounts,
+                                  color: Colors.white, size: 22),
+                            ),
+                            const SizedBox(width: 14),
+                            const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Manage Data',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'View and edit participants, sessions, and payments',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(Icons.close,
+                                  color: Colors.white70),
+                              onPressed: () => Navigator.pop(dialogContext),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const TabBar(
+                        labelColor: Color(0xFFD32F2F),
+                        unselectedLabelColor: Colors.grey,
+                        tabs: [
+                          Tab(text: 'Participants'),
+                          Tab(text: 'Sessions'),
+                          Tab(text: 'Payments'),
+                        ],
+                      ),
+                      Expanded(
+                        child: FutureBuilder<
+                            Map<String, List<Map<String, dynamic>>>>(
+                          future: loadFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            }
+
+                            if (snapshot.hasError) {
+                              return Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Text(
+                                      'Failed to load data: ${snapshot.error}'),
+                                ),
+                              );
+                            }
+
+                            final participants =
+                                snapshot.data?['participants'] ?? [];
+                            final sessions = snapshot.data?['sessions'] ?? [];
+                            final payments = snapshot.data?['payments'] ?? [];
+
+                            return TabBarView(
+                              children: [
+                                _buildParticipantsListTab(
+                                  context: context,
+                                  participants: participants,
+                                  onEdit: (participant) async {
+                                    final updated =
+                                        await _showEditParticipantDialog(
+                                      context,
+                                      participant,
+                                    );
+                                    if (updated && context.mounted) {
+                                      setDialogState(() {
+                                        loadFuture = loadData();
+                                      });
+                                    }
+                                  },
+                                ),
+                                _buildSessionsListTab(
+                                  context: context,
+                                  sessions: sessions,
+                                  onEdit: (session) async {
+                                    final updated =
+                                        await _showEditSessionDialog(
+                                      context,
+                                      session,
+                                    );
+                                    if (updated && context.mounted) {
+                                      setDialogState(() {
+                                        loadFuture = loadData();
+                                      });
+                                    }
+                                  },
+                                ),
+                                _buildPaymentsListTab(
+                                  context: context,
+                                  payments: payments,
+                                  onEdit: (payment) async {
+                                    final updated =
+                                        await _showEditPaymentDialog(
+                                      context,
+                                      payment,
+                                    );
+                                    if (updated && context.mounted) {
+                                      setDialogState(() {
+                                        loadFuture = loadData();
+                                      });
+                                    }
+                                  },
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildParticipantsListTab({
+    required BuildContext context,
+    required List<Map<String, dynamic>> participants,
+    required Future<void> Function(Map<String, dynamic> participant) onEdit,
+  }) {
+    if (participants.isEmpty) {
+      return const Center(child: Text('No participants found.'));
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: participants.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final participant = participants[index];
+        final participantId = participant['id']?.toString() ?? '-';
+        final participantName = participant['name']?.toString() ?? 'Unknown';
+        final phone = participant['phone']?.toString() ?? '';
+        final weightClass = participant['weightClass']?.toString() ?? '';
+        final paymentMethod = participant['paymentMethod']?.toString() ?? '';
+
+        return Card(
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.red[50],
+              child: Text(participantId,
+                  style: const TextStyle(color: Colors.red)),
+            ),
+            title: Text(
+              '#$participantId $participantName',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              [
+                if (phone.isNotEmpty) 'Phone: $phone',
+                if (weightClass.isNotEmpty) 'Weight: $weightClass',
+                if (paymentMethod.isNotEmpty) 'Payment: $paymentMethod',
+              ].join(' • '),
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.edit, color: Colors.red),
+              onPressed: () => onEdit(participant),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSessionsListTab({
+    required BuildContext context,
+    required List<Map<String, dynamic>> sessions,
+    required Future<void> Function(Map<String, dynamic> session) onEdit,
+  }) {
+    if (sessions.isEmpty) {
+      return const Center(child: Text('No sessions found.'));
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: sessions.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final session = sessions[index];
+        final sessionId = session['id']?.toString() ?? '-';
+        final title = session['title']?.toString() ?? 'Session';
+        final sessionDate = session['sessionDate']?.toString() ?? '';
+        final sessionTime = session['sessionTime']?.toString() ?? '';
+        final sessionType = session['sessionType']?.toString() ?? '';
+        final durationMinutes = session['durationMinutes']?.toString() ?? '';
+        final participantsCount =
+            session['participantsCount']?.toString() ?? '0';
+
+        return Card(
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.red[50],
+              child: Text(sessionId, style: const TextStyle(color: Colors.red)),
+            ),
+            title: Text(
+              '#$sessionId $title',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              [
+                '$sessionDate $sessionTime',
+                if (sessionType.isNotEmpty) sessionType,
+                if (durationMinutes.isNotEmpty) '$durationMinutes min',
+                '$participantsCount participants',
+              ].join(' • '),
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.edit, color: Colors.red),
+              onPressed: () => onEdit(session),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPaymentsListTab({
+    required BuildContext context,
+    required List<Map<String, dynamic>> payments,
+    required Future<void> Function(Map<String, dynamic> payment) onEdit,
+  }) {
+    if (payments.isEmpty) {
+      return const Center(child: Text('No payments found.'));
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: payments.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final payment = payments[index];
+        final paymentId = payment['id']?.toString() ?? '-';
+        final participantName =
+            payment['participantName']?.toString() ?? 'Unknown';
+        final description = payment['description']?.toString() ?? '';
+        final method = payment['method']?.toString() ?? '';
+        final status = payment['status']?.toString() ?? '';
+        final amount = (payment['amount'] as num?)?.toDouble() ?? 0;
+
+        return Card(
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor:
+                  status == 'paid' ? Colors.green[50] : Colors.orange[50],
+              child: Text(
+                paymentId,
+                style: TextStyle(
+                  color: status == 'paid' ? Colors.green : Colors.orange,
+                ),
+              ),
+            ),
+            title: Text(
+              '#$paymentId $participantName',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              [
+                if (description.isNotEmpty) description,
+                if (method.isNotEmpty) 'Method: $method',
+                'Status: ${status.isEmpty ? 'unknown' : status}',
+              ].join(' • '),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Chip(
+                  backgroundColor:
+                      status == 'paid' ? Colors.green[50] : Colors.orange[50],
+                  label: Text(
+                    '\$${amount.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      color: status == 'paid' ? Colors.green : Colors.orange,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.red),
+                  onPressed: () => onEdit(payment),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<bool> _showEditParticipantDialog(
+    BuildContext context,
+    Map<String, dynamic> participant,
+  ) async {
+    final formKey = GlobalKey<FormState>();
+    final nameController =
+        TextEditingController(text: participant['name']?.toString() ?? '');
+    final phoneController =
+        TextEditingController(text: participant['phone']?.toString() ?? '');
+    final ageController =
+        TextEditingController(text: participant['age']?.toString() ?? '');
+    final notesController =
+        TextEditingController(text: participant['notes']?.toString() ?? '');
+
+    String selectedWeightClass =
+        participant['weightClass']?.toString().trim().isNotEmpty == true
+            ? participant['weightClass'].toString()
+            : 'Lightweight';
+    String selectedPaymentMethod =
+        participant['paymentMethod']?.toString().trim().isNotEmpty == true
+            ? participant['paymentMethod'].toString()
+            : 'Cash';
+
+    final weightClasses = [
+      'Minimumweight',
+      'Light Flyweight',
+      'Flyweight',
+      'Super Flyweight',
+      'Bantamweight',
+      'Super Bantamweight',
+      'Featherweight',
+      'Super Featherweight',
+      'Lightweight',
+      'Super Lightweight',
+      'Welterweight',
+      'Super Welterweight',
+      'Middleweight',
+      'Super Middleweight',
+      'Light Heavyweight',
+      'Cruiserweight',
+      'Heavyweight',
+      'Super Heavyweight',
+    ];
+
+    final paymentMethods = [
+      'Cash',
+      'Credit Card',
+      'Bank Transfer',
+      'Monthly Plan',
+    ];
+
+    final participantId = participant['id']?.toString() ?? '-';
+
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SizedBox(
+                width: 520,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 20),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFD32F2F), Color(0xFF9A0007)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const CircleAvatar(
+                            backgroundColor: Colors.white24,
+                            radius: 22,
+                            child: Icon(Icons.person,
+                                color: Colors.white, size: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Edit Participant',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Participant ID #$participantId',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon:
+                                const Icon(Icons.close, color: Colors.white70),
+                            onPressed: () =>
+                                Navigator.pop(dialogContext, false),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Form(
+                          key: formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _dialogFieldLabel('Participant Name *'),
+                              const SizedBox(height: 6),
+                              TextFormField(
+                                controller: nameController,
+                                decoration: _dialogInputDecoration(
+                                  hint: 'Enter name',
+                                  icon: Icons.person,
+                                ),
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                        ? 'Required'
+                                        : null,
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _dialogFieldLabel('Phone'),
+                                        const SizedBox(height: 6),
+                                        TextFormField(
+                                          controller: phoneController,
+                                          decoration: _dialogInputDecoration(
+                                            hint: 'Phone number',
+                                            icon: Icons.phone,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _dialogFieldLabel('Age'),
+                                        const SizedBox(height: 6),
+                                        TextFormField(
+                                          controller: ageController,
+                                          decoration: _dialogInputDecoration(
+                                            hint: 'Age',
+                                            icon: Icons.cake,
+                                          ),
+                                          keyboardType: TextInputType.number,
+                                          validator: (v) {
+                                            if (v == null || v.trim().isEmpty) {
+                                              return 'Required';
+                                            }
+                                            final age = int.tryParse(v.trim());
+                                            if (age == null || age <= 0) {
+                                              return 'Enter a valid age';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _dialogFieldLabel('Weight Class'),
+                                        const SizedBox(height: 6),
+                                        DropdownButtonFormField<String>(
+                                          initialValue: selectedWeightClass,
+                                          decoration: _dialogInputDecoration(
+                                            hint: '',
+                                            icon: Icons.monitor_weight,
+                                          ),
+                                          isExpanded: true,
+                                          items: weightClasses
+                                              .map((weightClass) =>
+                                                  DropdownMenuItem(
+                                                    value: weightClass,
+                                                    child: Text(
+                                                      weightClass,
+                                                      style: const TextStyle(
+                                                          fontSize: 13),
+                                                    ),
+                                                  ))
+                                              .toList(),
+                                          onChanged: (value) =>
+                                              setDialogState(() {
+                                            selectedWeightClass = value!;
+                                          }),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _dialogFieldLabel('Payment Method'),
+                                        const SizedBox(height: 6),
+                                        DropdownButtonFormField<String>(
+                                          initialValue: selectedPaymentMethod,
+                                          decoration: _dialogInputDecoration(
+                                            hint: '',
+                                            icon: Icons.account_balance_wallet,
+                                          ),
+                                          isExpanded: true,
+                                          items: paymentMethods
+                                              .map((method) => DropdownMenuItem(
+                                                    value: method,
+                                                    child: Text(
+                                                      method,
+                                                      style: const TextStyle(
+                                                          fontSize: 13),
+                                                    ),
+                                                  ))
+                                              .toList(),
+                                          onChanged: (value) =>
+                                              setDialogState(() {
+                                            selectedPaymentMethod = value!;
+                                          }),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              _dialogFieldLabel('Notes'),
+                              const SizedBox(height: 6),
+                              TextFormField(
+                                controller: notesController,
+                                decoration: _dialogInputDecoration(
+                                  hint: 'Optional notes',
+                                  icon: Icons.notes,
+                                ),
+                                maxLines: 3,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.pop(dialogContext, false),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.check),
+                            label: const Text('Save Changes'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD32F2F),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: () async {
+                              if (!formKey.currentState!.validate()) {
+                                return;
+                              }
+
+                              await context
+                                  .read<AppDataProvider>()
+                                  .updateParticipant(
+                                    id: participant['id'] as int,
+                                    name: nameController.text.trim(),
+                                    phone: phoneController.text.trim(),
+                                    age: int.parse(ageController.text.trim()),
+                                    weightClass: selectedWeightClass,
+                                    paymentMethod: selectedPaymentMethod,
+                                    notes: notesController.text.trim(),
+                                  );
+
+                              Navigator.pop(dialogContext, true);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).then((value) => value ?? false);
+  }
+
+  Future<bool> _showEditPaymentDialog(
+    BuildContext context,
+    Map<String, dynamic> payment,
+  ) async {
+    final paymentId = payment['id'] as int;
+    final amountController = TextEditingController(
+      text: (payment['amount'] as num?)?.toString() ?? '',
+    );
+    final descriptionController = TextEditingController(
+      text: payment['description']?.toString() ?? '',
+    );
+    final methodController = TextEditingController(
+      text: payment['method']?.toString() ?? '',
+    );
+    String selectedStatus =
+        payment['status']?.toString() == 'paid' ? 'paid' : 'pending';
+
+    final statusOptions = ['pending', 'paid'];
+
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SizedBox(
+                width: 520,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 20),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFD32F2F), Color(0xFF9A0007)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const CircleAvatar(
+                            backgroundColor: Colors.white24,
+                            radius: 22,
+                            child: Icon(Icons.payments,
+                                color: Colors.white, size: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Edit Payment',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Payment ID #$paymentId',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon:
+                                const Icon(Icons.close, color: Colors.white70),
+                            onPressed: () =>
+                                Navigator.pop(dialogContext, false),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _dialogFieldLabel('Participant'),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              initialValue:
+                                  payment['participantName']?.toString() ?? '',
+                              readOnly: true,
+                              decoration: _dialogInputDecoration(
+                                hint: '',
+                                icon: Icons.person,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _dialogFieldLabel('Amount'),
+                                      const SizedBox(height: 6),
+                                      TextFormField(
+                                        controller: amountController,
+                                        decoration: _dialogInputDecoration(
+                                          hint: 'Amount',
+                                          icon: Icons.attach_money,
+                                        ),
+                                        keyboardType: const TextInputType
+                                            .numberWithOptions(decimal: true),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _dialogFieldLabel('Status'),
+                                      const SizedBox(height: 6),
+                                      DropdownButtonFormField<String>(
+                                        value: selectedStatus,
+                                        decoration: _dialogInputDecoration(
+                                          hint: '',
+                                          icon: Icons.flag,
+                                        ),
+                                        isExpanded: true,
+                                        items: statusOptions
+                                            .map(
+                                              (option) => DropdownMenuItem(
+                                                value: option,
+                                                child: Text(
+                                                  option,
+                                                  style: const TextStyle(
+                                                      fontSize: 13),
+                                                ),
+                                              ),
+                                            )
+                                            .toList(),
+                                        onChanged: (value) {
+                                          setDialogState(() {
+                                            selectedStatus = value!;
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            _dialogFieldLabel('Method'),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: methodController,
+                              decoration: _dialogInputDecoration(
+                                hint: 'Payment method',
+                                icon: Icons.account_balance_wallet,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _dialogFieldLabel('Description'),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: descriptionController,
+                              decoration: _dialogInputDecoration(
+                                hint: 'Description',
+                                icon: Icons.description,
+                              ),
+                              maxLines: 2,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.pop(dialogContext, false),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.check),
+                            label: const Text('Save Changes'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD32F2F),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: () async {
+                              await context
+                                  .read<AppDataProvider>()
+                                  .updatePaymentStatus(
+                                    id: paymentId,
+                                    status: selectedStatus,
+                                  );
+
+                              await context.read<AppDataProvider>().addPayment(
+                                    participantName: payment['participantName']
+                                            ?.toString() ??
+                                        '',
+                                    amount: double.tryParse(
+                                            amountController.text.trim()) ??
+                                        ((payment['amount'] as num?)
+                                                ?.toDouble() ??
+                                            0),
+                                    description:
+                                        descriptionController.text.trim(),
+                                    method: methodController.text.trim(),
+                                    status: selectedStatus,
+                                  );
+
+                              Navigator.pop(dialogContext, true);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).then((value) => value ?? false);
+  }
+
+  Future<bool> _showEditSessionDialog(
+    BuildContext context,
+    Map<String, dynamic> session,
+  ) async {
+    final formKey = GlobalKey<FormState>();
+    final titleController =
+        TextEditingController(text: session['title']?.toString() ?? '');
+    final sessionTypeController =
+        TextEditingController(text: session['sessionType']?.toString() ?? '');
+    final dateController =
+        TextEditingController(text: session['sessionDate']?.toString() ?? '');
+    final timeController =
+        TextEditingController(text: session['sessionTime']?.toString() ?? '');
+    final durationController = TextEditingController(
+        text: session['durationMinutes']?.toString() ?? '');
+
+    final sessionId = session['id']?.toString() ?? '-';
+    final initialDateTime = _sessionDateTime(session);
+
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SizedBox(
+                width: 520,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 20),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFD32F2F), Color(0xFF9A0007)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const CircleAvatar(
+                            backgroundColor: Colors.white24,
+                            radius: 22,
+                            child: Icon(Icons.calendar_month,
+                                color: Colors.white, size: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Edit Session',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Session ID #$sessionId',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon:
+                                const Icon(Icons.close, color: Colors.white70),
+                            onPressed: () =>
+                                Navigator.pop(dialogContext, false),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Form(
+                          key: formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _dialogFieldLabel('Session Title *'),
+                              const SizedBox(height: 6),
+                              TextFormField(
+                                controller: titleController,
+                                decoration: _dialogInputDecoration(
+                                  hint: 'e.g. Friday Sparring',
+                                  icon: Icons.title,
+                                ),
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                        ? 'Required'
+                                        : null,
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    flex: 2,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _dialogFieldLabel('Session Type'),
+                                        const SizedBox(height: 6),
+                                        TextFormField(
+                                          controller: sessionTypeController,
+                                          decoration: _dialogInputDecoration(
+                                            hint: 'e.g. Group Training',
+                                            icon: Icons.sports_mma,
+                                          ),
+                                          validator: (v) =>
+                                              (v == null || v.trim().isEmpty)
+                                                  ? 'Required'
+                                                  : null,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    flex: 1,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _dialogFieldLabel('Duration'),
+                                        const SizedBox(height: 6),
+                                        TextFormField(
+                                          controller: durationController,
+                                          decoration: _dialogInputDecoration(
+                                            hint: 'min',
+                                            icon: Icons.timer_outlined,
+                                          ),
+                                          keyboardType: TextInputType.number,
+                                          validator: (v) {
+                                            if (v == null || v.trim().isEmpty) {
+                                              return 'Required';
+                                            }
+                                            if (int.tryParse(v.trim()) ==
+                                                null) {
+                                              return 'Enter a number';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _dialogFieldLabel('Date'),
+                                        const SizedBox(height: 6),
+                                        TextFormField(
+                                          controller: dateController,
+                                          readOnly: true,
+                                          decoration: _dialogInputDecoration(
+                                            hint: 'Select Date',
+                                            icon: Icons.event,
+                                          ),
+                                          onTap: () async {
+                                            final now = DateTime.now();
+                                            final initialDate =
+                                                initialDateTime ?? now;
+                                            final DateTime? picked =
+                                                await showDatePicker(
+                                              context: context,
+                                              initialDate: initialDate,
+                                              firstDate: DateTime(2000),
+                                              lastDate: DateTime(now.year + 10),
+                                            );
+                                            if (picked != null &&
+                                                context.mounted) {
+                                              setDialogState(() {
+                                                dateController.text =
+                                                    '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                                              });
+                                            }
+                                          },
+                                          validator: (v) =>
+                                              (v == null || v.trim().isEmpty)
+                                                  ? 'Required'
+                                                  : null,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _dialogFieldLabel('Time'),
+                                        const SizedBox(height: 6),
+                                        TextFormField(
+                                          controller: timeController,
+                                          readOnly: true,
+                                          decoration: _dialogInputDecoration(
+                                            hint: 'Select Time',
+                                            icon: Icons.access_time,
+                                          ),
+                                          onTap: () async {
+                                            final initialTime =
+                                                initialDateTime != null
+                                                    ? TimeOfDay.fromDateTime(
+                                                        initialDateTime)
+                                                    : TimeOfDay.now();
+                                            final TimeOfDay? picked =
+                                                await showTimePicker(
+                                              context: context,
+                                              initialTime: initialTime,
+                                            );
+                                            if (picked != null &&
+                                                context.mounted) {
+                                              setDialogState(() {
+                                                timeController.text =
+                                                    picked.format(context);
+                                              });
+                                            }
+                                          },
+                                          validator: (v) =>
+                                              (v == null || v.trim().isEmpty)
+                                                  ? 'Required'
+                                                  : null,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.pop(dialogContext, false),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.check),
+                            label: const Text('Save Changes'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD32F2F),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: () async {
+                              if (!formKey.currentState!.validate()) {
+                                return;
+                              }
+
+                              await context
+                                  .read<AppDataProvider>()
+                                  .updateSession(
+                                    id: session['id'] as int,
+                                    title: titleController.text.trim(),
+                                    sessionType:
+                                        sessionTypeController.text.trim(),
+                                    durationMinutes: int.parse(
+                                        durationController.text.trim()),
+                                    sessionDate: dateController.text.trim(),
+                                    sessionTime: timeController.text.trim(),
+                                  );
+                              Navigator.pop(dialogContext, true);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).then((value) => value ?? false);
   }
 
   void _showFabMenu(BuildContext context, AppLocalizations appLocalizations) {
