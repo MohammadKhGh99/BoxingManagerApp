@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -9,6 +10,8 @@ class BoxingDatabase {
   BoxingDatabase._();
 
   static final BoxingDatabase instance = BoxingDatabase._();
+  static const MethodChannel _backupChannel =
+      MethodChannel('boxing_coach_manager/backup_storage');
 
   static const _databaseName = 'boxing_coach_manager.db';
   Database? _database;
@@ -526,21 +529,47 @@ class BoxingDatabase {
 
   Future<File> createBackup() async {
     final db = await database;
+    await _checkpointDatabase(db);
     final sourcePath = _databasePath ?? db.path;
+    final timestamp = DateTime.now()
+        .toIso8601String()
+        .replaceAll(':', '-')
+        .replaceAll('.', '-');
+    final backupFileName = 'boxing_coach_manager_backup_$timestamp.db';
+
+    if (Platform.isAndroid) {
+      final savedPath = await _backupChannel.invokeMethod<String>(
+        'saveBackup',
+        {
+          'sourcePath': sourcePath,
+          'fileName': backupFileName,
+          'subDir': 'BoxingManager',
+        },
+      );
+
+      if (savedPath == null || savedPath.isEmpty) {
+        throw Exception('Unable to save backup to public storage');
+      }
+
+      return File(savedPath);
+    }
+
     final appDocumentsDir = await getApplicationDocumentsDirectory();
     final backupDir = Directory(p.join(appDocumentsDir.path, 'backups'));
     if (!await backupDir.exists()) {
       await backupDir.create(recursive: true);
     }
 
-    final timestamp = DateTime.now()
-        .toIso8601String()
-        .replaceAll(':', '-')
-        .replaceAll('.', '-');
-    final backupFile = File(
-      p.join(backupDir.path, 'boxing_coach_manager_backup_$timestamp.db'),
-    );
+    final backupFile = File(p.join(backupDir.path, backupFileName));
     return File(sourcePath).copy(backupFile.path);
+  }
+
+  Future<void> _checkpointDatabase(Database db) async {
+    try {
+      await db.rawQuery('PRAGMA wal_checkpoint(FULL)');
+    } catch (_) {
+      // Some SQLite configurations do not use WAL; in that case there is nothing to checkpoint.
+    }
   }
 
   String _formatDate(DateTime dateTime) {

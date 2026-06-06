@@ -293,16 +293,17 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 20),
             if (session == null)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: Text('No session scheduled for today.')),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: Text(appLocalizations.noSessionToday)),
               )
             else
               _buildSessionCard(
-                title: session['title']?.toString() ?? 'Session',
+                title: session['title']?.toString() ?? appLocalizations.session,
                 date: '${session['sessionDate']} ${session['sessionTime']}',
                 description: session['notes']?.toString() ?? '',
                 participants: dataProvider.todaySessionParticipants,
+                appLocalizations: appLocalizations,
               ),
           ],
         ),
@@ -315,6 +316,7 @@ class _HomePageState extends State<HomePage> {
     required String date,
     required String description,
     required List<Map<String, dynamic>> participants,
+    required AppLocalizations appLocalizations,
   }) {
     return Card(
       elevation: 2,
@@ -359,7 +361,7 @@ class _HomePageState extends State<HomePage> {
                 final participantName =
                     participant['participantName']?.toString() ??
                         participant['name']?.toString() ??
-                        'Unknown';
+                        appLocalizations.unknown;
                 return Chip(
                   backgroundColor: isPaid ? Colors.green[50] : Colors.blue[50],
                   label: Row(
@@ -425,12 +427,12 @@ class _HomePageState extends State<HomePage> {
                 ],
                 rows: attendanceData.map((data) {
                   return DataRow(cells: [
-                    DataCell(
-                        Text(data['participantName']?.toString() ?? 'Unknown')),
-                    DataCell(
-                        Text(data['sessionTitle']?.toString() ?? 'Unknown')),
-                    DataCell(
-                        Text(data['sessionDate']?.toString() ?? 'Unknown')),
+                    DataCell(Text(data['participantName']?.toString() ??
+                        appLocalizations.unknown)),
+                    DataCell(Text(data['sessionTitle']?.toString() ??
+                        appLocalizations.unknown)),
+                    DataCell(Text(data['sessionDate']?.toString() ??
+                        appLocalizations.unknown)),
                     DataCell(
                       Chip(
                         backgroundColor: data['status'] == 'attended'
@@ -526,8 +528,8 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 10),
                 _buildAddButton(
                   icon: Icons.manage_search,
-                  text: 'Manage Data',
-                  onPressed: () => _showManageDataDialog(context),
+                  text: appLocalizations.manageData,
+                  onPressed: () => _showManageDataDialog(context, appLocalizations),
                 ),
               ],
             ),
@@ -698,6 +700,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showAddParticipantDialog(BuildContext context) {
+    final appLocalizations = AppLocalizations.of(context)!;
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
@@ -770,12 +773,12 @@ class _HomePageState extends State<HomePage> {
                                 color: Colors.white, size: 22),
                           ),
                           const SizedBox(width: 14),
-                          const Column(
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Add New Participant',
-                                style: TextStyle(
+                                appLocalizations.addParticipant,
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -783,8 +786,8 @@ class _HomePageState extends State<HomePage> {
                               ),
                               SizedBox(height: 2),
                               Text(
-                                'Fill in the details below',
-                                style: TextStyle(
+                                appLocalizations.participantDetails,
+                                style: const TextStyle(
                                     color: Colors.white70, fontSize: 13),
                               ),
                             ],
@@ -809,7 +812,8 @@ class _HomePageState extends State<HomePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // Full Name
-                              _dialogFieldLabel('Full Name *'),
+                              _dialogFieldLabel(
+                                  '${appLocalizations.fullName} *'),
                               const SizedBox(height: 6),
                               TextFormField(
                                 controller: nameController,
@@ -831,7 +835,8 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Phone Number *'),
+                                        _dialogFieldLabel(
+                                            '${appLocalizations.phone} *'),
                                         const SizedBox(height: 6),
                                         TextFormField(
                                           controller: phoneController,
@@ -855,7 +860,8 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Age *'),
+                                        _dialogFieldLabel(
+                                            '${appLocalizations.age} *'),
                                         const SizedBox(height: 6),
                                         TextFormField(
                                           controller: ageController,
@@ -893,7 +899,8 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Weight Class'),
+                                        _dialogFieldLabel(
+                                            appLocalizations.weightClass),
                                         const SizedBox(height: 6),
                                         DropdownButtonFormField<String>(
                                           initialValue: selectedWeightClass,
@@ -921,7 +928,8 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Payment Method'),
+                                        _dialogFieldLabel(
+                                            appLocalizations.paymentMethod),
                                         const SizedBox(height: 6),
                                         DropdownButtonFormField<String>(
                                           initialValue: selectedPaymentMethod,
@@ -948,7 +956,7 @@ class _HomePageState extends State<HomePage> {
                               const SizedBox(height: 16),
 
                               // Notes
-                              _dialogFieldLabel('Notes'),
+                              _dialogFieldLabel(appLocalizations.notes),
                               const SizedBox(height: 6),
                               TextFormField(
                                 controller: notesController,
@@ -972,13 +980,13 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel',
-                                style: TextStyle(color: Colors.grey)),
+                            child: Text(appLocalizations.cancel,
+                                style: const TextStyle(color: Colors.grey)),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton.icon(
                             icon: const Icon(Icons.check),
-                            label: const Text('Save Participant'),
+                            label: Text(appLocalizations.save),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFD32F2F),
                               foregroundColor: Colors.white,
@@ -1073,6 +1081,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showScheduleSessionDialog(BuildContext context) {
+    final appLocalizations = AppLocalizations.of(context)!;
     final formKey = GlobalKey<FormState>();
     final titleController = TextEditingController();
     final sessionTypeController = TextEditingController();
@@ -1115,12 +1124,12 @@ class _HomePageState extends State<HomePage> {
                                 color: Colors.white, size: 22),
                           ),
                           const SizedBox(width: 14),
-                          const Column(
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Schedule Session',
-                                style: TextStyle(
+                                appLocalizations.scheduleSession,
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -1128,8 +1137,8 @@ class _HomePageState extends State<HomePage> {
                               ),
                               SizedBox(height: 2),
                               Text(
-                                'Plan a future training class',
-                                style: TextStyle(
+                                appLocalizations.sessionPlan,
+                                style: const TextStyle(
                                     color: Colors.white70, fontSize: 13),
                               ),
                             ],
@@ -1151,7 +1160,8 @@ class _HomePageState extends State<HomePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _dialogFieldLabel('Session Title *'),
+                              _dialogFieldLabel(
+                                  '${appLocalizations.sessionTitle} *'),
                               const SizedBox(height: 6),
                               TextFormField(
                                 controller: titleController,
@@ -1173,7 +1183,8 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Session Type'),
+                                        _dialogFieldLabel(
+                                            appLocalizations.sessionType),
                                         const SizedBox(height: 6),
                                         TextFormField(
                                           controller: sessionTypeController,
@@ -1196,7 +1207,8 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Duration'),
+                                        _dialogFieldLabel(
+                                            appLocalizations.duration),
                                         const SizedBox(height: 6),
                                         TextFormField(
                                           controller: durationController,
@@ -1219,13 +1231,14 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Date'),
+                                        _dialogFieldLabel(
+                                            appLocalizations.date),
                                         const SizedBox(height: 6),
                                         TextFormField(
                                           controller: dateController,
                                           readOnly: true,
                                           decoration: _dialogInputDecoration(
-                                            hint: 'Select Date',
+                                            hint: appLocalizations.selectDate,
                                             icon: Icons.event,
                                           ),
                                           onTap: () async {
@@ -1272,13 +1285,14 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Time'),
+                                        _dialogFieldLabel(
+                                            appLocalizations.sessionTime),
                                         const SizedBox(height: 6),
                                         TextFormField(
                                           controller: timeController,
                                           readOnly: true,
                                           decoration: _dialogInputDecoration(
-                                            hint: 'Select Time',
+                                            hint: appLocalizations.selectTime,
                                             icon: Icons.access_time,
                                           ),
                                           onTap: () async {
@@ -1315,13 +1329,13 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel',
-                                style: TextStyle(color: Colors.grey)),
+                            child: Text(appLocalizations.cancel,
+                                style: const TextStyle(color: Colors.grey)),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton.icon(
                             icon: const Icon(Icons.check),
-                            label: const Text('Schedule'),
+                            label: Text(appLocalizations.save),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFD32F2F),
                               foregroundColor: Colors.white,
@@ -1373,6 +1387,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showRecordPaymentDialog(BuildContext context) {
+    final appLocalizations = AppLocalizations.of(context)!;
     final formKey = GlobalKey<FormState>();
     final amountController = TextEditingController();
     String selectedPaymentMethod = 'Cash';
@@ -1422,12 +1437,12 @@ class _HomePageState extends State<HomePage> {
                                 color: Colors.white, size: 22),
                           ),
                           const SizedBox(width: 14),
-                          const Column(
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Record Payment',
-                                style: TextStyle(
+                                appLocalizations.recordPayment,
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -1435,8 +1450,8 @@ class _HomePageState extends State<HomePage> {
                               ),
                               SizedBox(height: 2),
                               Text(
-                                'Log a new transaction',
-                                style: TextStyle(
+                                appLocalizations.transactionLog,
+                                style: const TextStyle(
                                     color: Colors.white70, fontSize: 13),
                               ),
                             ],
@@ -1458,7 +1473,7 @@ class _HomePageState extends State<HomePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _dialogFieldLabel('Participant'),
+                              _dialogFieldLabel(appLocalizations.participant),
                               const SizedBox(height: 6),
                               DropdownButtonFormField<String>(
                                 initialValue: selectedParticipant,
@@ -1491,7 +1506,8 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Amount (\$) *'),
+                                        _dialogFieldLabel(
+                                            '${appLocalizations.amount} (\$) *'),
                                         const SizedBox(height: 6),
                                         TextFormField(
                                           controller: amountController,
@@ -1515,7 +1531,8 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Method'),
+                                        _dialogFieldLabel(
+                                            appLocalizations.paymentMethod),
                                         const SizedBox(height: 6),
                                         DropdownButtonFormField<String>(
                                           initialValue: selectedPaymentMethod,
@@ -1551,13 +1568,13 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel',
-                                style: TextStyle(color: Colors.grey)),
+                            child: Text(appLocalizations.cancel,
+                                style: const TextStyle(color: Colors.grey)),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton.icon(
                             icon: const Icon(Icons.check),
-                            label: const Text('Save Payment'),
+                            label: Text(appLocalizations.save),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFD32F2F),
                               foregroundColor: Colors.white,
@@ -1618,6 +1635,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _showTakeAttendanceDialog(BuildContext context) async {
+    final appLocalizations = AppLocalizations.of(context)!;
     final dataProvider = context.read<AppDataProvider>();
     final allSessions = await dataProvider.allSessions();
     if (!context.mounted) {
@@ -1657,10 +1675,15 @@ class _HomePageState extends State<HomePage> {
     String? selectedParticipant =
         participantNames.isNotEmpty ? participantNames.first : null;
     int? selectedSessionId = eligibleSessions.first['id'] as int?;
-    String selectedStatus = 'Present';
-    String selectedPaymentStatus = 'pending';
+    String selectedStatus = appLocalizations.present;
+    String selectedPaymentStatus = appLocalizations.pending;
 
-    final statusOptions = ['Present', 'Absent', 'Late', 'Excused'];
+    final statusOptions = [
+      appLocalizations.present,
+      appLocalizations.absent,
+      appLocalizations.late,
+      appLocalizations.excused
+    ];
     final paymentStatusOptions = ['pending', 'paid'];
 
     if (!context.mounted) {
@@ -1710,12 +1733,12 @@ class _HomePageState extends State<HomePage> {
                                 color: Colors.white, size: 22),
                           ),
                           const SizedBox(width: 14),
-                          const Column(
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Mark Attendance',
-                                style: TextStyle(
+                                appLocalizations.takeAttendance,
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -1723,8 +1746,8 @@ class _HomePageState extends State<HomePage> {
                               ),
                               SizedBox(height: 2),
                               Text(
-                                'Record presence for a session',
-                                style: TextStyle(
+                                appLocalizations.recordPresence,
+                                style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 13,
                                 ),
@@ -1746,7 +1769,7 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _dialogFieldLabel('Session'),
+                            _dialogFieldLabel(appLocalizations.session),
                             const SizedBox(height: 6),
                             DropdownButtonFormField<int>(
                               value: selectedSessionId,
@@ -1778,7 +1801,8 @@ class _HomePageState extends State<HomePage> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      _dialogFieldLabel('Participant'),
+                                      _dialogFieldLabel(
+                                          appLocalizations.participant),
                                       const SizedBox(height: 6),
                                       DropdownButtonFormField<String>(
                                         value: selectedParticipant,
@@ -1818,7 +1842,8 @@ class _HomePageState extends State<HomePage> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      _dialogFieldLabel('Status'),
+                                      _dialogFieldLabel(
+                                          appLocalizations.status),
                                       const SizedBox(height: 6),
                                       DropdownButtonFormField<String>(
                                         value: selectedStatus,
@@ -1850,7 +1875,7 @@ class _HomePageState extends State<HomePage> {
                               ],
                             ),
                             const SizedBox(height: 16),
-                            _dialogFieldLabel('Payment Status'),
+                            _dialogFieldLabel(appLocalizations.payment),
                             const SizedBox(height: 6),
                             DropdownButtonFormField<String>(
                               value: selectedPaymentStatus,
@@ -1886,15 +1911,15 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: const Text(
-                              'Cancel',
-                              style: TextStyle(color: Colors.grey),
+                            child: Text(
+                              appLocalizations.cancel,
+                              style: const TextStyle(color: Colors.grey),
                             ),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton.icon(
                             icon: const Icon(Icons.check),
-                            label: const Text('Save'),
+                            label: Text(appLocalizations.save),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFD32F2F),
                               foregroundColor: Colors.white,
@@ -2022,7 +2047,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _showManageDataDialog(BuildContext context) async {
+  Future<void> _showManageDataDialog(BuildContext context, AppLocalizations appLocalizations) async {
+    final appLocalizations = AppLocalizations.of(context)!;
     final dataProvider = context.read<AppDataProvider>();
 
     Future<Map<String, List<Map<String, dynamic>>>> loadData() async {
@@ -2088,12 +2114,12 @@ class _HomePageState extends State<HomePage> {
                                   color: Colors.white, size: 22),
                             ),
                             const SizedBox(width: 14),
-                            const Column(
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Manage Data',
-                                  style: TextStyle(
+                                  appLocalizations.manageData,
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -2101,8 +2127,8 @@ class _HomePageState extends State<HomePage> {
                                 ),
                                 SizedBox(height: 2),
                                 Text(
-                                  'View and edit participants, sessions, and payments',
-                                  style: TextStyle(
+                                  appLocalizations.viewAndEdit,
+                                  style: const TextStyle(
                                     color: Colors.white70,
                                     fontSize: 13,
                                   ),
@@ -2118,13 +2144,13 @@ class _HomePageState extends State<HomePage> {
                           ],
                         ),
                       ),
-                      const TabBar(
+                      TabBar(
                         labelColor: Color(0xFFD32F2F),
                         unselectedLabelColor: Colors.grey,
                         tabs: [
-                          Tab(text: 'Participants'),
-                          Tab(text: 'Sessions'),
-                          Tab(text: 'Payments'),
+                          Tab(text: appLocalizations.participants),
+                          Tab(text: appLocalizations.sessions),
+                          Tab(text: appLocalizations.payments),
                         ],
                       ),
                       Expanded(
@@ -2224,8 +2250,9 @@ class _HomePageState extends State<HomePage> {
     required List<Map<String, dynamic>> participants,
     required Future<void> Function(Map<String, dynamic> participant) onEdit,
   }) {
+    final appLocalizations = AppLocalizations.of(context)!;
     if (participants.isEmpty) {
-      return const Center(child: Text('No participants found.'));
+      return Center(child: Text(appLocalizations.noParticipantsFound));
     }
 
     return ListView.separated(
@@ -2253,9 +2280,11 @@ class _HomePageState extends State<HomePage> {
             ),
             subtitle: Text(
               [
-                if (phone.isNotEmpty) 'Phone: $phone',
-                if (weightClass.isNotEmpty) 'Weight: $weightClass',
-                if (paymentMethod.isNotEmpty) 'Payment: $paymentMethod',
+                if (phone.isNotEmpty) '${appLocalizations.phone}: $phone',
+                if (weightClass.isNotEmpty)
+                  '${appLocalizations.weightClass}: $weightClass',
+                if (paymentMethod.isNotEmpty)
+                  '${appLocalizations.paymentMethod}: $paymentMethod',
               ].join(' • '),
             ),
             trailing: IconButton(
@@ -2273,8 +2302,9 @@ class _HomePageState extends State<HomePage> {
     required List<Map<String, dynamic>> sessions,
     required Future<void> Function(Map<String, dynamic> session) onEdit,
   }) {
+    final appLocalizations = AppLocalizations.of(context)!;
     if (sessions.isEmpty) {
-      return const Center(child: Text('No sessions found.'));
+      return Center(child: Text(appLocalizations.noSessionsFound));
     }
 
     return ListView.separated(
@@ -2325,8 +2355,9 @@ class _HomePageState extends State<HomePage> {
     required List<Map<String, dynamic>> payments,
     required Future<void> Function(Map<String, dynamic> payment) onEdit,
   }) {
+    final appLocalizations = AppLocalizations.of(context)!;
     if (payments.isEmpty) {
-      return const Center(child: Text('No payments found.'));
+      return Center(child: Text(appLocalizations.noPaymentsFound));
     }
 
     return ListView.separated(
@@ -2362,8 +2393,9 @@ class _HomePageState extends State<HomePage> {
             subtitle: Text(
               [
                 if (description.isNotEmpty) description,
-                if (method.isNotEmpty) 'Method: $method',
-                'Status: ${status.isEmpty ? 'unknown' : status}',
+                if (method.isNotEmpty)
+                  '${appLocalizations.paymentMethod}: $method',
+                '${appLocalizations.status}: ${status.isEmpty ? appLocalizations.unknown : status}',
               ].join(' • '),
             ),
             trailing: Row(
@@ -2396,6 +2428,7 @@ class _HomePageState extends State<HomePage> {
     BuildContext context,
     Map<String, dynamic> participant,
   ) async {
+    final appLocalizations = AppLocalizations.of(context)!;
     final formKey = GlobalKey<FormState>();
     final nameController =
         TextEditingController(text: participant['name']?.toString() ?? '');
@@ -2484,9 +2517,9 @@ class _HomePageState extends State<HomePage> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Edit Participant',
-                                style: TextStyle(
+                              Text(
+                                appLocalizations.editParticipant,
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -2520,7 +2553,8 @@ class _HomePageState extends State<HomePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _dialogFieldLabel('Participant Name *'),
+                              _dialogFieldLabel(
+                                  '${appLocalizations.participant} *'),
                               const SizedBox(height: 6),
                               TextFormField(
                                 controller: nameController,
@@ -2541,7 +2575,8 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Phone'),
+                                        _dialogFieldLabel(
+                                            appLocalizations.phone),
                                         const SizedBox(height: 6),
                                         TextFormField(
                                           controller: phoneController,
@@ -2559,7 +2594,7 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Age'),
+                                        _dialogFieldLabel(appLocalizations.age),
                                         const SizedBox(height: 6),
                                         TextFormField(
                                           controller: ageController,
@@ -2592,7 +2627,8 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Weight Class'),
+                                        _dialogFieldLabel(
+                                            appLocalizations.weightClass),
                                         const SizedBox(height: 6),
                                         DropdownButtonFormField<String>(
                                           initialValue: selectedWeightClass,
@@ -2626,7 +2662,8 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Payment Method'),
+                                        _dialogFieldLabel(
+                                            appLocalizations.paymentMethod),
                                         const SizedBox(height: 6),
                                         DropdownButtonFormField<String>(
                                           initialValue: selectedPaymentMethod,
@@ -2656,7 +2693,7 @@ class _HomePageState extends State<HomePage> {
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              _dialogFieldLabel('Notes'),
+                              _dialogFieldLabel(appLocalizations.notes),
                               const SizedBox(height: 6),
                               TextFormField(
                                 controller: notesController,
@@ -2679,15 +2716,15 @@ class _HomePageState extends State<HomePage> {
                           TextButton(
                             onPressed: () =>
                                 Navigator.pop(dialogContext, false),
-                            child: const Text(
-                              'Cancel',
-                              style: TextStyle(color: Colors.grey),
+                            child: Text(
+                              appLocalizations.cancel,
+                              style: const TextStyle(color: Colors.grey),
                             ),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton.icon(
                             icon: const Icon(Icons.check),
-                            label: const Text('Save Changes'),
+                            label: Text(appLocalizations.saveChanges),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFD32F2F),
                               foregroundColor: Colors.white,
@@ -2734,6 +2771,7 @@ class _HomePageState extends State<HomePage> {
     BuildContext context,
     Map<String, dynamic> payment,
   ) async {
+    final appLocalizations = AppLocalizations.of(context)!;
     final paymentId = payment['id'] as int;
     final amountController = TextEditingController(
       text: (payment['amount'] as num?)?.toString() ?? '',
@@ -2788,9 +2826,9 @@ class _HomePageState extends State<HomePage> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Edit Payment',
-                                style: TextStyle(
+                              Text(
+                                appLocalizations.editPayment,
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -2822,7 +2860,7 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _dialogFieldLabel('Participant'),
+                            _dialogFieldLabel(appLocalizations.participant),
                             const SizedBox(height: 6),
                             TextFormField(
                               initialValue:
@@ -2841,7 +2879,8 @@ class _HomePageState extends State<HomePage> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      _dialogFieldLabel('Amount'),
+                                      _dialogFieldLabel(
+                                          appLocalizations.amount),
                                       const SizedBox(height: 6),
                                       TextFormField(
                                         controller: amountController,
@@ -2861,7 +2900,8 @@ class _HomePageState extends State<HomePage> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      _dialogFieldLabel('Status'),
+                                      _dialogFieldLabel(
+                                          appLocalizations.status),
                                       const SizedBox(height: 6),
                                       DropdownButtonFormField<String>(
                                         value: selectedStatus,
@@ -2894,7 +2934,7 @@ class _HomePageState extends State<HomePage> {
                               ],
                             ),
                             const SizedBox(height: 16),
-                            _dialogFieldLabel('Method'),
+                            _dialogFieldLabel(appLocalizations.paymentMethod),
                             const SizedBox(height: 6),
                             TextFormField(
                               controller: methodController,
@@ -2904,7 +2944,7 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            _dialogFieldLabel('Description'),
+                            _dialogFieldLabel(appLocalizations.description),
                             const SizedBox(height: 6),
                             TextFormField(
                               controller: descriptionController,
@@ -2926,15 +2966,15 @@ class _HomePageState extends State<HomePage> {
                           TextButton(
                             onPressed: () =>
                                 Navigator.pop(dialogContext, false),
-                            child: const Text(
-                              'Cancel',
-                              style: TextStyle(color: Colors.grey),
+                            child: Text(
+                              appLocalizations.cancel,
+                              style: const TextStyle(color: Colors.grey),
                             ),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton.icon(
                             icon: const Icon(Icons.check),
-                            label: const Text('Save Changes'),
+                            label: Text(appLocalizations.saveChanges),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFD32F2F),
                               foregroundColor: Colors.white,
@@ -2987,6 +3027,7 @@ class _HomePageState extends State<HomePage> {
     BuildContext context,
     Map<String, dynamic> session,
   ) async {
+    final appLocalizations = AppLocalizations.of(context)!;
     final formKey = GlobalKey<FormState>();
     final titleController =
         TextEditingController(text: session['title']?.toString() ?? '');
@@ -3041,9 +3082,9 @@ class _HomePageState extends State<HomePage> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Edit Session',
-                                style: TextStyle(
+                              Text(
+                                appLocalizations.editSession,
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -3077,7 +3118,8 @@ class _HomePageState extends State<HomePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _dialogFieldLabel('Session Title *'),
+                              _dialogFieldLabel(
+                                  '${appLocalizations.sessionTitle} *'),
                               const SizedBox(height: 6),
                               TextFormField(
                                 controller: titleController,
@@ -3099,7 +3141,8 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Session Type'),
+                                        _dialogFieldLabel(
+                                            appLocalizations.sessionType),
                                         const SizedBox(height: 6),
                                         TextFormField(
                                           controller: sessionTypeController,
@@ -3122,7 +3165,8 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Duration'),
+                                        _dialogFieldLabel(
+                                            appLocalizations.duration),
                                         const SizedBox(height: 6),
                                         TextFormField(
                                           controller: durationController,
@@ -3155,13 +3199,14 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Date'),
+                                        _dialogFieldLabel(
+                                            appLocalizations.date),
                                         const SizedBox(height: 6),
                                         TextFormField(
                                           controller: dateController,
                                           readOnly: true,
                                           decoration: _dialogInputDecoration(
-                                            hint: 'Select Date',
+                                            hint: appLocalizations.selectDate,
                                             icon: Icons.event,
                                           ),
                                           onTap: () async {
@@ -3197,13 +3242,14 @@ class _HomePageState extends State<HomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _dialogFieldLabel('Time'),
+                                        _dialogFieldLabel(
+                                            appLocalizations.sessionTime),
                                         const SizedBox(height: 6),
                                         TextFormField(
                                           controller: timeController,
                                           readOnly: true,
                                           decoration: _dialogInputDecoration(
-                                            hint: 'Select Time',
+                                            hint: appLocalizations.selectTime,
                                             icon: Icons.access_time,
                                           ),
                                           onTap: () async {
@@ -3248,15 +3294,15 @@ class _HomePageState extends State<HomePage> {
                           TextButton(
                             onPressed: () =>
                                 Navigator.pop(dialogContext, false),
-                            child: const Text(
-                              'Cancel',
-                              style: TextStyle(color: Colors.grey),
+                            child: Text(
+                              appLocalizations.cancel,
+                              style: const TextStyle(color: Colors.grey),
                             ),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton.icon(
                             icon: const Icon(Icons.check),
-                            label: const Text('Save Changes'),
+                            label: Text(appLocalizations.saveChanges),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFD32F2F),
                               foregroundColor: Colors.white,
@@ -3319,13 +3365,13 @@ class _HomePageState extends State<HomePage> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Quick Actions',
-                    style: TextStyle(
+                    appLocalizations.quickActions,
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFFD32F2F),
@@ -3386,8 +3432,8 @@ class _HomePageState extends State<HomePage> {
                   backgroundColor: Color(0xFFFFEBEE),
                   child: Icon(Icons.backup, color: Color(0xFFD32F2F)),
                 ),
-                title: const Text('Backup Database',
-                    style: TextStyle(fontWeight: FontWeight.w500)),
+                title: Text(appLocalizations.backupDatabase,
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
                 onTap: () {
                   Navigator.pop(context);
                   _backupDatabase(context);

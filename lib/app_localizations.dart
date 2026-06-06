@@ -31,6 +31,23 @@ class AppLocalizations {
   String get todaysSession => _localizedStrings['todaysSession']!;
   String get newSession => _localizedStrings['newSession']!;
   String get recentAttendance => _localizedStrings['recentAttendance']!;
+  String get noSessionToday => _localizedStrings['noSessionToday']!;
+  String get manageData => _localizedStrings['manageData']!;
+  String get quickActions => _localizedStrings['quickActions']!;
+  String get backupDatabase => _localizedStrings['backupDatabase']!;
+  String get cancel => _localizedStrings['cancel']!;
+  String get save => _localizedStrings['save']!;
+  String get saveChanges => _localizedStrings['saveChanges']!;
+  String get unknown => _localizedStrings['unknown']!;
+  String get fullName => _localizedStrings['fullName']!;
+  String get phone => _localizedStrings['phone']!;
+  String get age => _localizedStrings['age']!;
+  String get weightClass => _localizedStrings['weightClass']!;
+  String get paymentMethod => _localizedStrings['paymentMethod']!;
+  String get notes => _localizedStrings['notes']!;
+  String get duration => _localizedStrings['duration']!;
+  String get amount => _localizedStrings['amount']!;
+  String get description => _localizedStrings['description']!;
   String get participant => _localizedStrings['participant']!;
   String get session => _localizedStrings['session']!;
   String get date => _localizedStrings['date']!;
@@ -39,6 +56,14 @@ class AppLocalizations {
   String get attended => _localizedStrings['attended']!;
   String get absent => _localizedStrings['absent']!;
   String get paid => _localizedStrings['paid']!;
+  String get present => _localizedStrings['present']!;
+  String get late => _localizedStrings['late']!;
+  String get excused => _localizedStrings['excused']!;
+  String get sessionTitle => _localizedStrings['sessionTitle']!;
+  String get sessionType => _localizedStrings['sessionType']!;
+  String get selectDate => _localizedStrings['selectDate']!;
+  String get sessionTime => _localizedStrings['sessionTime']!;
+  String get selectTime => _localizedStrings['selectTime']!;
   String get pending => _localizedStrings['pending']!;
   String get addNew => _localizedStrings['addNew']!;
   String get addParticipant => _localizedStrings['addParticipant']!;
@@ -47,7 +72,20 @@ class AppLocalizations {
   String get takeAttendance => _localizedStrings['takeAttendance']!;
   String get upcomingSessions => _localizedStrings['upcomingSessions']!;
   String get pendingPayments => _localizedStrings['pendingPayments']!;
+  String get editParticipant => _localizedStrings['editParticipant']!;
+  String get editSession => _localizedStrings['editSession']!;
+  String get editPayment => _localizedStrings['editPayment']!;
+  String get noParticipantsFound => _localizedStrings['noParticipantsFound']!;
+  String get noSessionsFound => _localizedStrings['noSessionsFound']!;
+  String get noPaymentsFound => _localizedStrings['noPaymentsFound']!;
+  String get participantDetails => _localizedStrings['participantDetails']!;
+  String get sessionPlan => _localizedStrings['sessionPlan']!;
+  String get transactionLog => _localizedStrings['transactionLog']!;
+  String get recordPresence => _localizedStrings['recordPresence']!;
+  String get viewAndEdit => _localizedStrings['viewAndEdit']!;
   String get participants => _localizedStrings['participants']!;
+  String get sessions => _localizedStrings['sessions']!;
+  String get payments => _localizedStrings['payments']!;
   String get language => _localizedStrings['language']!;
   String get english => _localizedStrings['english']!;
   String get arabic => _localizedStrings['arabic']!;
@@ -63,6 +101,23 @@ class AppLocalizations {
     'attendanceRate': 'Attendance Rate',
     'todaysSession': "Today's Session",
     'newSession': 'New Session',
+    'noSessionToday': 'No session scheduled for today.',
+    'manageData': 'Manage Data',
+    'quickActions': 'Quick Actions',
+    'backupDatabase': 'Backup Database',
+    'cancel': 'Cancel',
+    'save': 'Save',
+    'saveChanges': 'Save Changes',
+    'unknown': 'Unknown',
+    'fullName': 'Full Name',
+    'phone': 'Phone',
+    'age': 'Age',
+    'weightClass': 'Weight Class',
+    'paymentMethod': 'Payment Method',
+    'notes': 'Notes',
+    'duration': 'Duration',
+    'amount': 'Amount',
+    'description': 'Description',
     'recentAttendance': 'Recent Attendance',
     'participant': 'Participant',
     'session': 'Session',
@@ -71,6 +126,14 @@ class AppLocalizations {
     'payment': 'Payment',
     'attended': 'Attended',
     'absent': 'Absent',
+    'present': 'Present',
+    'late': 'Late',
+    'excused': 'Excused',
+    'sessionTitle': 'Session Title',
+    'sessionType': 'Session Type',
+    'selectDate': 'Select Date',
+    'sessionTime': 'Time',
+    'selectTime': 'Select Time',
     'paid': 'Paid',
     'pending': 'Pending',
     'addNew': 'Add New',
@@ -80,7 +143,20 @@ class AppLocalizations {
     'takeAttendance': 'Take Attendance',
     'upcomingSessions': 'Upcoming Sessions',
     'pendingPayments': 'Pending Payments',
+    'editParticipant': 'Edit Participant',
+    'editSession': 'Edit Session',
+    'editPayment': 'Edit Payment',
+    'noParticipantsFound': 'No participants found.',
+    'noSessionsFound': 'No sessions found.',
+    'noPaymentsFound': 'No payments found.',
+    'participantDetails': 'Fill in the details below',
+    'sessionPlan': 'Plan a future training class',
+    'transactionLog': 'Log a new transaction',
+    'recordPresence': 'Record presence for a session',
+    'viewAndEdit': 'View and edit participants, sessions, and payments',
     'participants': 'Participants',
+    'sessions': 'Sessions',
+    'payments': 'Payments',
     'language': 'Language',
     'english': 'English',
     'arabic': 'Arabic',
@@ -97,6 +173,23 @@ class AppLocalizations {
     'attendanceRate': 'معدل الحضور',
     'todaysSession': 'جلسة اليوم',
     'newSession': 'جلسة جديدة',
+    'noSessionToday': 'لا توجد جلسات مجدولة اليوم.',
+    'manageData': 'إدارة البيانات',
+    'quickActions': 'إجراءات سريعة',
+    'backupDatabase': 'نسخ احتياطي لقاعدة البيانات',
+    'cancel': 'إلغاء',
+    'save': 'حفظ',
+    'saveChanges': 'حفظ التغييرات',
+    'unknown': 'غير معروف',
+    'fullName': 'الاسم الكامل',
+    'phone': 'الهاتف',
+    'age': 'العمر',
+    'weightClass': 'فئة الوزن',
+    'paymentMethod': 'طريقة الدفع',
+    'notes': 'ملاحظات',
+    'duration': 'المدة',
+    'amount': 'المبلغ',
+    'description': 'الوصف',
     'recentAttendance': 'الحضور الأخير',
     'participant': 'المشارك',
     'session': 'الجلسة',
@@ -105,6 +198,14 @@ class AppLocalizations {
     'payment': 'الدفع',
     'attended': 'حاضر',
     'absent': 'غائب',
+    'present': 'حاضر',
+    'late': 'متأخر',
+    'excused': 'عذر',
+    'sessionTitle': 'عنوان الجلسة',
+    'sessionType': 'نوع الجلسة',
+    'selectDate': 'اختر التاريخ',
+    'sessionTime': 'الوقت',
+    'selectTime': 'اختر الوقت',
     'paid': 'مدفوع',
     'pending': 'قيد الانتظار',
     'addNew': 'إضافة جديد',
@@ -114,7 +215,20 @@ class AppLocalizations {
     'takeAttendance': 'تسجيل الحضور',
     'upcomingSessions': 'الجلسات القادمة',
     'pendingPayments': 'المدفوعات المعلقة',
+    'editParticipant': 'تعديل مشارك',
+    'editSession': 'تعديل جلسة',
+    'editPayment': 'تعديل دفعة',
+    'noParticipantsFound': 'لم يتم العثور على مشاركين.',
+    'noSessionsFound': 'لم يتم العثور على جلسات.',
+    'noPaymentsFound': 'لم يتم العثور على مدفوعات.',
+    'participantDetails': 'املأ التفاصيل أدناه',
+    'sessionPlan': 'خطط لجلسة تدريب مستقبلية',
+    'transactionLog': 'تسجيل معاملة جديدة',
+    'recordPresence': 'تسجيل الحضور للجلسة',
+    'viewAndEdit': 'عرض وتعديل المشاركين والجلسات والمدفوعات',
     'participants': 'المشاركين',
+    'sessions': 'الجلسات',
+    'payments': 'المدفوعات',
     'language': 'اللغة',
     'english': 'الإنجليزية',
     'arabic': 'العربية',
@@ -131,6 +245,23 @@ class AppLocalizations {
     'attendanceRate': 'שיעור נוכחות',
     'todaysSession': 'אימון היום',
     'newSession': 'אימון חדש',
+    'noSessionToday': 'אין אימונים מתוזמנים להיום.',
+    'manageData': 'ניהול נתונים',
+    'quickActions': 'פעולות מהירות',
+    'backupDatabase': 'גיבוי מסד נתונים',
+    'cancel': 'ביטול',
+    'save': 'שמור',
+    'saveChanges': 'שמור שינויים',
+    'unknown': 'לא ידוע',
+    'fullName': 'שם מלא',
+    'phone': 'טלפון',
+    'age': 'גיל',
+    'weightClass': 'קבוצת משקל',
+    'paymentMethod': 'שיטת תשלום',
+    'notes': 'הערות',
+    'duration': 'משך זמן',
+    'amount': 'סכום',
+    'description': 'תיאור',
     'recentAttendance': 'נוכחות אחרונה',
     'participant': 'משתתף',
     'session': 'אימון',
@@ -139,6 +270,14 @@ class AppLocalizations {
     'payment': 'תשלום',
     'attended': 'נכח',
     'absent': 'נעדר',
+    'present': 'נוכח',
+    'late': 'איחר',
+    'excused': 'מוצדק',
+    'sessionTitle': 'כותרת האימון',
+    'sessionType': 'סוג האימון',
+    'selectDate': 'בחר תאריך',
+    'sessionTime': 'שעה',
+    'selectTime': 'בחר שעה',
     'paid': 'שולם',
     'pending': 'ממתין',
     'addNew': 'הוסף חדש',
@@ -148,7 +287,20 @@ class AppLocalizations {
     'takeAttendance': 'רישום נוכחות',
     'upcomingSessions': 'אימונים קרובים',
     'pendingPayments': 'תשלומים ממתינים',
+    'editParticipant': 'ערוך משתתף',
+    'editSession': 'ערוך אימון',
+    'editPayment': 'ערוך תשלום',
+    'noParticipantsFound': 'לא נמצאו משתתפים.',
+    'noSessionsFound': 'לא נמצאו אימונים.',
+    'noPaymentsFound': 'לא נמצאו תשלומים.',
+    'participantDetails': 'מלא את הפרטים למטה',
+    'sessionPlan': 'תכנן אימון עתידי',
+    'transactionLog': 'רשום עסקה חדשה',
+    'recordPresence': 'רשום נוכחות לאימון',
+    'viewAndEdit': 'צפה וערוך משתתפים, אימונים ותשלומים',
     'participants': 'משתתפים',
+    'sessions': 'אימונים',
+    'payments': 'תשלומים',
     'language': 'שפה',
     'english': 'אנגלית',
     'arabic': 'ערבית',
