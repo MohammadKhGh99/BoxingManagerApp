@@ -210,43 +210,51 @@ class _HomePageState extends State<HomePage> {
       AppDataProvider dataProvider) {
     return Directionality(
       textDirection: isRTL ? TextDirection.rtl : TextDirection.ltr,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 3,
-            child: Column(
-              children: [
-                // Today's session
-                _buildTodaysSession(context, appLocalizations, dataProvider),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 100),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: Column(
+                children: [
+                  // Today's session
+                  _buildTodaysSession(context, appLocalizations, dataProvider),
 
-                // Recent attendance
-                const SizedBox(height: 20),
-                _buildRecentAttendance(context, appLocalizations, dataProvider),
-              ],
+                  // Recent attendance
+                  const SizedBox(height: 20),
+                  _buildRecentAttendance(
+                      context, appLocalizations, dataProvider),
+                ],
+              ),
             ),
-          ),
 
-          // Sidebar
-          const SizedBox(width: 20),
-          Expanded(
-            flex: 1,
-            child: Column(
-              children: [
-                // Add new section
-                _buildAddNewSection(context, appLocalizations),
+            // Sidebar
+            const SizedBox(width: 20),
+            Expanded(
+              flex: 2,
+              child: Column(
+                children: [
+                  // Add new section
+                  _buildAddNewSection(context, appLocalizations),
 
-                // Upcoming sessions
-                const SizedBox(height: 20),
-                _buildUpcomingSessions(context, appLocalizations, dataProvider),
+                  // Upcoming sessions
+                  const SizedBox(height: 20),
+                  _buildUpcomingSessions(
+                      context, appLocalizations, dataProvider),
 
-                // Pending payments
-                const SizedBox(height: 20),
-                _buildPendingPayments(context, appLocalizations, dataProvider),
-              ],
+                  // Pending payments
+                  const SizedBox(height: 20),
+                  _buildPendingPayments(
+                      context, appLocalizations, dataProvider),
+                  const SizedBox(height: 20),
+                ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 50),
+          ],
+        ),
       ),
     );
   }
@@ -426,9 +434,9 @@ class _HomePageState extends State<HomePage> {
                   DataColumn(label: Text(appLocalizations.payment)),
                 ],
                 rows: attendanceData.map((data) {
+                  final participantLabel = _participantLabelFromMap(data);
                   return DataRow(cells: [
-                    DataCell(Text(data['participantName']?.toString() ??
-                        appLocalizations.unknown)),
+                    DataCell(Text(participantLabel)),
                     DataCell(Text(data['sessionTitle']?.toString() ??
                         appLocalizations.unknown)),
                     DataCell(Text(data['sessionDate']?.toString() ??
@@ -529,7 +537,7 @@ class _HomePageState extends State<HomePage> {
                 _buildAddButton(
                   icon: Icons.manage_search,
                   text: appLocalizations.manageData,
-                  onPressed: () => _showManageDataDialog(context, appLocalizations),
+                  onPressed: () => _showManageDataDialog(context),
                 ),
               ],
             ),
@@ -659,6 +667,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 15),
             Column(
               children: payments.map((payment) {
+                final participantLabel = _participantLabelFromMap(payment);
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   child: Row(
@@ -668,7 +677,7 @@ class _HomePageState extends State<HomePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            payment['participantName']?.toString() ?? '',
+                            participantLabel,
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                             ),
@@ -702,6 +711,7 @@ class _HomePageState extends State<HomePage> {
   void _showAddParticipantDialog(BuildContext context) {
     final appLocalizations = AppLocalizations.of(context)!;
     final formKey = GlobalKey<FormState>();
+    final personalIdController = TextEditingController();
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
     final ageController = TextEditingController();
@@ -811,6 +821,21 @@ class _HomePageState extends State<HomePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              _dialogFieldLabel('Personal ID *'),
+                              const SizedBox(height: 6),
+                              TextFormField(
+                                controller: personalIdController,
+                                decoration: _dialogInputDecoration(
+                                  hint: 'e.g. P-1024',
+                                  icon: Icons.badge_outlined,
+                                ),
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                        ? 'Personal ID is required'
+                                        : null,
+                              ),
+                              const SizedBox(height: 16),
+
                               // Full Name
                               _dialogFieldLabel(
                                   '${appLocalizations.fullName} *'),
@@ -999,35 +1024,48 @@ class _HomePageState extends State<HomePage> {
                               if (formKey.currentState!.validate()) {
                                 final navigator = Navigator.of(context);
                                 final messenger = ScaffoldMessenger.of(context);
-                                await context
-                                    .read<AppDataProvider>()
-                                    .addParticipant(
-                                      name: nameController.text.trim(),
-                                      phone: phoneController.text.trim(),
-                                      age: int.parse(ageController.text.trim()),
-                                      weightClass: selectedWeightClass,
-                                      paymentMethod: selectedPaymentMethod,
-                                      notes: notesController.text.trim(),
-                                    );
-                                navigator.pop();
-                                messenger.showSnackBar(
-                                  SnackBar(
-                                    content: Row(
-                                      children: [
-                                        const Icon(Icons.check_circle,
-                                            color: Colors.white),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                            '${nameController.text.trim()} added successfully!'),
-                                      ],
+                                try {
+                                  await context
+                                      .read<AppDataProvider>()
+                                      .addParticipant(
+                                        personalId:
+                                            personalIdController.text.trim(),
+                                        name: nameController.text.trim(),
+                                        phone: phoneController.text.trim(),
+                                        age: int.parse(
+                                            ageController.text.trim()),
+                                        weightClass: selectedWeightClass,
+                                        paymentMethod: selectedPaymentMethod,
+                                        notes: notesController.text.trim(),
+                                      );
+                                  navigator.pop();
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Row(
+                                        children: [
+                                          const Icon(Icons.check_circle,
+                                              color: Colors.white),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                              '${personalIdController.text.trim()} - ${nameController.text.trim()} added successfully!'),
+                                        ],
+                                      ),
+                                      backgroundColor: Colors.green[700],
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
+                                      duration: const Duration(seconds: 3),
                                     ),
-                                    backgroundColor: Colors.green[700],
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8)),
-                                    duration: const Duration(seconds: 3),
-                                  ),
-                                );
+                                  );
+                                } catch (error) {
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text(error.toString()),
+                                      backgroundColor: Colors.red[700],
+                                    ),
+                                  );
+                                }
                               }
                             },
                           ),
@@ -1391,9 +1429,13 @@ class _HomePageState extends State<HomePage> {
     final formKey = GlobalKey<FormState>();
     final amountController = TextEditingController();
     String selectedPaymentMethod = 'Cash';
-    final participantNames = context.read<AppDataProvider>().participantNames;
-    String? selectedParticipant =
-        participantNames.isNotEmpty ? participantNames.first : null;
+    String participantIdSearchQuery = '';
+    final participants = context.read<AppDataProvider>().participants;
+    String? selectedParticipantId = participants.isNotEmpty
+        ? participants.first['personalId']?.toString()
+        : null;
+    Map<String, dynamic>? selectedParticipant =
+        participants.isNotEmpty ? participants.first : null;
 
     final paymentMethods = [
       'Cash',
@@ -1408,6 +1450,26 @@ class _HomePageState extends State<HomePage> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final normalizedParticipantQuery =
+                participantIdSearchQuery.trim().toLowerCase();
+            final filteredParticipants = normalizedParticipantQuery.isEmpty
+                ? participants
+                : participants.where((participant) {
+                    final personalId =
+                        participant['personalId']?.toString() ?? '';
+                    return personalId
+                        .toLowerCase()
+                        .contains(normalizedParticipantQuery);
+                  }).toList();
+            final filteredParticipantIds = filteredParticipants
+                .map((participant) => participant['personalId']?.toString())
+                .whereType<String>()
+                .toSet();
+            final dropdownParticipantValue = selectedParticipantId != null &&
+                    filteredParticipantIds.contains(selectedParticipantId)
+                ? selectedParticipantId
+                : null;
+
             return Dialog(
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16)),
@@ -1475,8 +1537,57 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               _dialogFieldLabel(appLocalizations.participant),
                               const SizedBox(height: 6),
+                              TextField(
+                                onChanged: (value) => setDialogState(() {
+                                  participantIdSearchQuery = value;
+                                  final normalizedValue =
+                                      value.trim().toLowerCase();
+                                  final nextFilteredParticipants =
+                                      normalizedValue.isEmpty
+                                          ? participants
+                                          : participants.where((participant) {
+                                              final personalId =
+                                                  participant['personalId']
+                                                          ?.toString() ??
+                                                      '';
+                                              return personalId
+                                                  .toLowerCase()
+                                                  .contains(normalizedValue);
+                                            }).toList();
+
+                                  if (nextFilteredParticipants.isEmpty) {
+                                    selectedParticipantId = null;
+                                    selectedParticipant = null;
+                                  } else {
+                                    final isCurrentVisible =
+                                        selectedParticipantId != null &&
+                                            nextFilteredParticipants.any(
+                                              (participant) =>
+                                                  participant['personalId']
+                                                      ?.toString() ==
+                                                  selectedParticipantId,
+                                            );
+                                    if (!isCurrentVisible) {
+                                      selectedParticipantId =
+                                          nextFilteredParticipants
+                                              .first['personalId']
+                                              ?.toString();
+                                      selectedParticipant =
+                                          nextFilteredParticipants.first;
+                                    }
+                                  }
+                                }),
+                                decoration: _dialogInputDecoration(
+                                  hint: 'Search by Personal ID',
+                                  icon: Icons.search,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
                               DropdownButtonFormField<String>(
-                                initialValue: selectedParticipant,
+                                key: ValueKey(
+                                  '$dropdownParticipantValue|$participantIdSearchQuery|${filteredParticipants.length}',
+                                ),
+                                initialValue: dropdownParticipantValue,
                                 decoration: _dialogInputDecoration(
                                   hint: '',
                                   icon: Icons.person,
@@ -1486,17 +1597,28 @@ class _HomePageState extends State<HomePage> {
                                   style: TextStyle(fontSize: 13),
                                 ),
                                 isExpanded: true,
-                                items: participantNames
-                                    .map((p) => DropdownMenuItem(
-                                        value: p,
-                                        child: Text(p,
-                                            style:
-                                                const TextStyle(fontSize: 13))))
+                                items: filteredParticipants
+                                    .map(
+                                      (participant) => DropdownMenuItem(
+                                        value: participant['personalId']
+                                            ?.toString(),
+                                        child: Text(
+                                          _participantLabel(participant),
+                                          style: const TextStyle(fontSize: 13),
+                                        ),
+                                      ),
+                                    )
                                     .toList(),
-                                onChanged: participantNames.isEmpty
+                                onChanged: participants.isEmpty
                                     ? null
-                                    : (v) => setDialogState(
-                                        () => selectedParticipant = v),
+                                    : (value) => setDialogState(() {
+                                          selectedParticipantId = value;
+                                          selectedParticipant =
+                                              _participantById(
+                                            participants,
+                                            value,
+                                          );
+                                        }),
                               ),
                               const SizedBox(height: 16),
                               Row(
@@ -1585,7 +1707,8 @@ class _HomePageState extends State<HomePage> {
                             ),
                             onPressed: () async {
                               if (formKey.currentState!.validate()) {
-                                if (selectedParticipant == null) {
+                                if (selectedParticipantId == null ||
+                                    selectedParticipant == null) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
@@ -1600,7 +1723,12 @@ class _HomePageState extends State<HomePage> {
                                 await context
                                     .read<AppDataProvider>()
                                     .addPayment(
-                                      participantName: selectedParticipant!,
+                                      participantPersonalId:
+                                          selectedParticipantId!,
+                                      participantName:
+                                          selectedParticipant!['name']
+                                                  ?.toString() ??
+                                              '',
                                       amount: double.tryParse(
                                             amountController.text.trim(),
                                           ) ??
@@ -1613,7 +1741,7 @@ class _HomePageState extends State<HomePage> {
                                 messenger.showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                        'Payment of \$${amountController.text} from $selectedParticipant marked as paid.'),
+                                        'Payment of \$${amountController.text} from ${_participantLabel(selectedParticipant)} marked as paid.'),
                                     backgroundColor: Colors.green[700],
                                     behavior: SnackBarBehavior.floating,
                                   ),
@@ -1671,12 +1799,16 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    final participantNames = dataProvider.participantNames;
-    String? selectedParticipant =
-        participantNames.isNotEmpty ? participantNames.first : null;
+    final participants = dataProvider.participants;
+    String participantIdSearchQuery = '';
+    String? selectedParticipantId = participants.isNotEmpty
+        ? participants.first['personalId']?.toString()
+        : null;
+    Map<String, dynamic>? selectedParticipant =
+        participants.isNotEmpty ? participants.first : null;
     int? selectedSessionId = eligibleSessions.first['id'] as int?;
     String selectedStatus = appLocalizations.present;
-    String selectedPaymentStatus = appLocalizations.pending;
+    String selectedPaymentStatus = 'pending';
 
     final statusOptions = [
       appLocalizations.present,
@@ -1696,6 +1828,25 @@ class _HomePageState extends State<HomePage> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final normalizedParticipantQuery =
+                participantIdSearchQuery.trim().toLowerCase();
+            final filteredParticipants = normalizedParticipantQuery.isEmpty
+                ? participants
+                : participants.where((participant) {
+                    final personalId =
+                        participant['personalId']?.toString() ?? '';
+                    return personalId
+                        .toLowerCase()
+                        .contains(normalizedParticipantQuery);
+                  }).toList();
+            final filteredParticipantIds = filteredParticipants
+                .map((participant) => participant['personalId']?.toString())
+                .whereType<String>()
+                .toSet();
+            final dropdownParticipantValue = selectedParticipantId != null &&
+                    filteredParticipantIds.contains(selectedParticipantId)
+                ? selectedParticipantId
+                : null;
             final selectedSession = eligibleSessions.firstWhere(
               (session) => session['id'] == selectedSessionId,
               orElse: () => eligibleSessions.first,
@@ -1804,8 +1955,64 @@ class _HomePageState extends State<HomePage> {
                                       _dialogFieldLabel(
                                           appLocalizations.participant),
                                       const SizedBox(height: 6),
+                                      TextField(
+                                        onChanged: (value) =>
+                                            setDialogState(() {
+                                          participantIdSearchQuery = value;
+                                          final normalizedValue =
+                                              value.trim().toLowerCase();
+                                          final nextFilteredParticipants =
+                                              normalizedValue.isEmpty
+                                                  ? participants
+                                                  : participants
+                                                      .where((participant) {
+                                                      final personalId =
+                                                          participant['personalId']
+                                                                  ?.toString() ??
+                                                              '';
+                                                      return personalId
+                                                          .toLowerCase()
+                                                          .contains(
+                                                              normalizedValue);
+                                                    }).toList();
+
+                                          if (nextFilteredParticipants
+                                              .isEmpty) {
+                                            selectedParticipantId = null;
+                                            selectedParticipant = null;
+                                          } else {
+                                            final isCurrentVisible =
+                                                selectedParticipantId != null &&
+                                                    nextFilteredParticipants
+                                                        .any(
+                                                      (participant) =>
+                                                          participant[
+                                                                  'personalId']
+                                                              ?.toString() ==
+                                                          selectedParticipantId,
+                                                    );
+                                            if (!isCurrentVisible) {
+                                              selectedParticipantId =
+                                                  nextFilteredParticipants
+                                                      .first['personalId']
+                                                      ?.toString();
+                                              selectedParticipant =
+                                                  nextFilteredParticipants
+                                                      .first;
+                                            }
+                                          }
+                                        }),
+                                        decoration: _dialogInputDecoration(
+                                          hint: 'Search by Personal ID',
+                                          icon: Icons.search,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
                                       DropdownButtonFormField<String>(
-                                        value: selectedParticipant,
+                                        key: ValueKey(
+                                          '$dropdownParticipantValue|$participantIdSearchQuery|${filteredParticipants.length}',
+                                        ),
+                                        initialValue: dropdownParticipantValue,
                                         decoration: _dialogInputDecoration(
                                           hint: '',
                                           icon: Icons.person,
@@ -1815,22 +2022,30 @@ class _HomePageState extends State<HomePage> {
                                           style: TextStyle(fontSize: 13),
                                         ),
                                         isExpanded: true,
-                                        items: participantNames
+                                        items: filteredParticipants
                                             .map(
                                               (participant) => DropdownMenuItem(
-                                                value: participant,
+                                                value: participant['personalId']
+                                                    ?.toString(),
                                                 child: Text(
-                                                  participant,
+                                                  _participantLabel(
+                                                      participant),
                                                   style: const TextStyle(
                                                       fontSize: 13),
                                                 ),
                                               ),
                                             )
                                             .toList(),
-                                        onChanged: participantNames.isEmpty
+                                        onChanged: participants.isEmpty
                                             ? null
-                                            : (value) => setDialogState(() =>
-                                                selectedParticipant = value),
+                                            : (value) => setDialogState(() {
+                                                  selectedParticipantId = value;
+                                                  selectedParticipant =
+                                                      _participantById(
+                                                    participants,
+                                                    value,
+                                                  );
+                                                }),
                                       ),
                                     ],
                                   ),
@@ -1889,7 +2104,9 @@ class _HomePageState extends State<HomePage> {
                                     (option) => DropdownMenuItem(
                                       value: option,
                                       child: Text(
-                                        option,
+                                        option == 'paid'
+                                            ? appLocalizations.paid
+                                            : appLocalizations.pending,
                                         style: const TextStyle(fontSize: 13),
                                       ),
                                     ),
@@ -1932,7 +2149,8 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
                             onPressed: () async {
-                              if (selectedParticipant == null) {
+                              if (selectedParticipantId == null ||
+                                  selectedParticipant == null) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
@@ -1964,7 +2182,12 @@ class _HomePageState extends State<HomePage> {
                               await context
                                   .read<AppDataProvider>()
                                   .addAttendance(
-                                    participantName: selectedParticipant!,
+                                    participantPersonalId:
+                                        selectedParticipantId!,
+                                    participantName:
+                                        selectedParticipant!['name']
+                                                ?.toString() ??
+                                            '',
                                     sessionTitle: selectedSessionTitle,
                                     sessionDate: selectedSessionDate,
                                     status: selectedStatus.toLowerCase(),
@@ -1974,7 +2197,7 @@ class _HomePageState extends State<HomePage> {
                               messenger.showSnackBar(
                                 SnackBar(
                                   content: Text(
-                                    '$selectedParticipant marked $selectedStatus for $selectedSessionTitle.',
+                                    '${_participantLabel(selectedParticipant)} marked $selectedStatus for $selectedSessionTitle.',
                                   ),
                                   backgroundColor: Colors.green[700],
                                   behavior: SnackBarBehavior.floating,
@@ -2047,9 +2270,65 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _showManageDataDialog(BuildContext context, AppLocalizations appLocalizations) async {
+  Map<String, dynamic>? _participantById(
+    List<Map<String, dynamic>> participants,
+    String? personalId,
+  ) {
+    if (personalId == null || personalId.trim().isEmpty) {
+      return null;
+    }
+
+    for (final participant in participants) {
+      if (participant['personalId']?.toString() == personalId) {
+        return participant;
+      }
+    }
+
+    return null;
+  }
+
+  String _participantLabel(Map<String, dynamic>? participant) {
+    if (participant == null) {
+      return 'Unknown';
+    }
+
+    return _participantLabelFromValues(
+      participant['personalId']?.toString() ??
+          participant['participantPersonalId']?.toString() ??
+          '',
+      participant['name']?.toString() ??
+          participant['participantName']?.toString() ??
+          '',
+    );
+  }
+
+  String _participantLabelFromMap(Map<String, dynamic> participant) {
+    return _participantLabel(participant);
+  }
+
+  String _participantLabelFromValues(String personalId, String name) {
+    final trimmedPersonalId = personalId.trim();
+    final trimmedName = name.trim();
+
+    if (trimmedPersonalId.isEmpty && trimmedName.isEmpty) {
+      return 'Unknown';
+    }
+
+    if (trimmedPersonalId.isEmpty) {
+      return trimmedName;
+    }
+
+    if (trimmedName.isEmpty) {
+      return '#$trimmedPersonalId';
+    }
+
+    return '#$trimmedPersonalId $trimmedName';
+  }
+
+  Future<void> _showManageDataDialog(BuildContext context) async {
     final appLocalizations = AppLocalizations.of(context)!;
     final dataProvider = context.read<AppDataProvider>();
+    String participantIdSearchQuery = '';
 
     Future<Map<String, List<Map<String, dynamic>>>> loadData() async {
       final results = await Future.wait([
@@ -2184,6 +2463,12 @@ class _HomePageState extends State<HomePage> {
                                 _buildParticipantsListTab(
                                   context: context,
                                   participants: participants,
+                                  searchQuery: participantIdSearchQuery,
+                                  onSearchChanged: (value) {
+                                    setDialogState(() {
+                                      participantIdSearchQuery = value;
+                                    });
+                                  },
                                   onEdit: (participant) async {
                                     final updated =
                                         await _showEditParticipantDialog(
@@ -2248,52 +2533,91 @@ class _HomePageState extends State<HomePage> {
   Widget _buildParticipantsListTab({
     required BuildContext context,
     required List<Map<String, dynamic>> participants,
+    required String searchQuery,
+    required ValueChanged<String> onSearchChanged,
     required Future<void> Function(Map<String, dynamic> participant) onEdit,
   }) {
     final appLocalizations = AppLocalizations.of(context)!;
-    if (participants.isEmpty) {
-      return Center(child: Text(appLocalizations.noParticipantsFound));
-    }
+    final normalizedQuery = searchQuery.trim().toLowerCase();
+    final filteredParticipants = normalizedQuery.isEmpty
+        ? participants
+        : participants.where((participant) {
+            final personalId = participant['personalId']?.toString() ?? '';
+            return personalId.toLowerCase().contains(normalizedQuery);
+          }).toList();
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: participants.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final participant = participants[index];
-        final participantId = participant['id']?.toString() ?? '-';
-        final participantName = participant['name']?.toString() ?? 'Unknown';
-        final phone = participant['phone']?.toString() ?? '';
-        final weightClass = participant['weightClass']?.toString() ?? '';
-        final paymentMethod = participant['paymentMethod']?.toString() ?? '';
-
-        return Card(
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.red[50],
-              child: Text(participantId,
-                  style: const TextStyle(color: Colors.red)),
-            ),
-            title: Text(
-              '#$participantId $participantName',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(
-              [
-                if (phone.isNotEmpty) '${appLocalizations.phone}: $phone',
-                if (weightClass.isNotEmpty)
-                  '${appLocalizations.weightClass}: $weightClass',
-                if (paymentMethod.isNotEmpty)
-                  '${appLocalizations.paymentMethod}: $paymentMethod',
-              ].join(' • '),
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.edit, color: Colors.red),
-              onPressed: () => onEdit(participant),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: TextField(
+            onChanged: onSearchChanged,
+            decoration: InputDecoration(
+              labelText: 'Search by Personal ID',
+              hintText: 'Type participant ID',
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
-        );
-      },
+        ),
+        Expanded(
+          child: filteredParticipants.isEmpty
+              ? Center(
+                  child: Text(
+                    normalizedQuery.isEmpty
+                        ? appLocalizations.noParticipantsFound
+                        : 'No participants found for this ID.',
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  itemCount: filteredParticipants.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final participant = filteredParticipants[index];
+                    final participantId =
+                        participant['personalId']?.toString() ?? '-';
+                    final participantName =
+                        participant['name']?.toString() ?? 'Unknown';
+                    final phone = participant['phone']?.toString() ?? '';
+                    final weightClass =
+                        participant['weightClass']?.toString() ?? '';
+                    final paymentMethod =
+                        participant['paymentMethod']?.toString() ?? '';
+
+                    return Card(
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Colors.red[50],
+                          child: Text(participantId,
+                              style: const TextStyle(color: Colors.red)),
+                        ),
+                        title: Text(
+                          '#$participantId $participantName',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          [
+                            if (phone.isNotEmpty)
+                              '${appLocalizations.phone}: $phone',
+                            if (weightClass.isNotEmpty)
+                              '${appLocalizations.weightClass}: $weightClass',
+                            if (paymentMethod.isNotEmpty)
+                              '${appLocalizations.paymentMethod}: $paymentMethod',
+                          ].join(' • '),
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.red),
+                          onPressed: () => onEdit(participant),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
@@ -2367,8 +2691,7 @@ class _HomePageState extends State<HomePage> {
       itemBuilder: (context, index) {
         final payment = payments[index];
         final paymentId = payment['id']?.toString() ?? '-';
-        final participantName =
-            payment['participantName']?.toString() ?? 'Unknown';
+        final participantName = _participantLabelFromMap(payment);
         final description = payment['description']?.toString() ?? '';
         final method = payment['method']?.toString() ?? '';
         final status = payment['status']?.toString() ?? '';
@@ -2430,6 +2753,9 @@ class _HomePageState extends State<HomePage> {
   ) async {
     final appLocalizations = AppLocalizations.of(context)!;
     final formKey = GlobalKey<FormState>();
+    final personalIdController = TextEditingController(
+      text: participant['personalId']?.toString() ?? '',
+    );
     final nameController =
         TextEditingController(text: participant['name']?.toString() ?? '');
     final phoneController =
@@ -2476,7 +2802,7 @@ class _HomePageState extends State<HomePage> {
       'Monthly Plan',
     ];
 
-    final participantId = participant['id']?.toString() ?? '-';
+    final participantId = participant['personalId']?.toString() ?? '-';
 
     return showDialog<bool>(
       context: context,
@@ -2553,6 +2879,21 @@ class _HomePageState extends State<HomePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              _dialogFieldLabel('Personal ID *'),
+                              const SizedBox(height: 6),
+                              TextFormField(
+                                controller: personalIdController,
+                                readOnly: true,
+                                decoration: _dialogInputDecoration(
+                                  hint: 'Participant identifier',
+                                  icon: Icons.badge_outlined,
+                                ),
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                        ? 'Required'
+                                        : null,
+                              ),
+                              const SizedBox(height: 16),
                               _dialogFieldLabel(
                                   '${appLocalizations.participant} *'),
                               const SizedBox(height: 6),
@@ -2742,7 +3083,8 @@ class _HomePageState extends State<HomePage> {
                               await context
                                   .read<AppDataProvider>()
                                   .updateParticipant(
-                                    id: participant['id'] as int,
+                                    personalId:
+                                        personalIdController.text.trim(),
                                     name: nameController.text.trim(),
                                     phone: phoneController.text.trim(),
                                     age: int.parse(ageController.text.trim()),
@@ -2773,6 +3115,9 @@ class _HomePageState extends State<HomePage> {
   ) async {
     final appLocalizations = AppLocalizations.of(context)!;
     final paymentId = payment['id'] as int;
+    final participantPersonalId =
+        payment['participantPersonalId']?.toString() ?? '';
+    final participantName = payment['participantName']?.toString() ?? '';
     final amountController = TextEditingController(
       text: (payment['amount'] as num?)?.toString() ?? '',
     );
@@ -2863,8 +3208,10 @@ class _HomePageState extends State<HomePage> {
                             _dialogFieldLabel(appLocalizations.participant),
                             const SizedBox(height: 6),
                             TextFormField(
-                              initialValue:
-                                  payment['participantName']?.toString() ?? '',
+                              initialValue: _participantLabelFromValues(
+                                participantPersonalId,
+                                participantName,
+                              ),
                               readOnly: true,
                               decoration: _dialogInputDecoration(
                                 hint: '',
@@ -2987,15 +3334,11 @@ class _HomePageState extends State<HomePage> {
                             onPressed: () async {
                               await context
                                   .read<AppDataProvider>()
-                                  .updatePaymentStatus(
+                                  .updatePayment(
                                     id: paymentId,
-                                    status: selectedStatus,
-                                  );
-
-                              await context.read<AppDataProvider>().addPayment(
-                                    participantName: payment['participantName']
-                                            ?.toString() ??
-                                        '',
+                                    participantPersonalId:
+                                        participantPersonalId,
+                                    participantName: participantName,
                                     amount: double.tryParse(
                                             amountController.text.trim()) ??
                                         ((payment['amount'] as num?)
@@ -3366,7 +3709,8 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(

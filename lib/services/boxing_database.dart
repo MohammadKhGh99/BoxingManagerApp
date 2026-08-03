@@ -26,7 +26,10 @@ class BoxingDatabase {
     _databasePath = p.join(databasesPath, _databaseName);
     _database = await openDatabase(
       _databasePath!,
-      version: 2,
+      version: 3,
+      onConfigure: (db) async {
+        await db.execute('PRAGMA foreign_keys = ON');
+      },
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -36,7 +39,7 @@ class BoxingDatabase {
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE participants (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        personalId TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         phone TEXT,
         age INTEGER,
@@ -64,41 +67,59 @@ class BoxingDatabase {
       CREATE TABLE session_participants (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         sessionId INTEGER NOT NULL,
+        participantPersonalId TEXT NOT NULL,
         participantName TEXT NOT NULL,
         paid INTEGER NOT NULL DEFAULT 0,
-        FOREIGN KEY(sessionId) REFERENCES sessions(id) ON DELETE CASCADE
+        FOREIGN KEY(sessionId) REFERENCES sessions(id) ON DELETE CASCADE,
+        FOREIGN KEY(participantPersonalId) REFERENCES participants(personalId)
+          ON DELETE CASCADE ON UPDATE CASCADE
       )
     ''');
 
     await db.execute('''
       CREATE TABLE attendance (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        participantPersonalId TEXT NOT NULL,
         participantName TEXT NOT NULL,
         sessionTitle TEXT NOT NULL,
         sessionDate TEXT NOT NULL,
         status TEXT NOT NULL,
         paymentStatus TEXT NOT NULL,
-        createdAt TEXT NOT NULL
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY(participantPersonalId) REFERENCES participants(personalId)
+          ON DELETE CASCADE ON UPDATE CASCADE
       )
     ''');
 
     await db.execute('''
       CREATE TABLE payments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        participantPersonalId TEXT NOT NULL,
         participantName TEXT NOT NULL,
         amount REAL NOT NULL,
         description TEXT,
         method TEXT NOT NULL,
         status TEXT NOT NULL,
-        createdAt TEXT NOT NULL
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY(participantPersonalId) REFERENCES participants(personalId)
+          ON DELETE CASCADE ON UPDATE CASCADE
       )
     ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      await _clearAllData(db);
+    if (oldVersion < 3) {
+      await _rebuildSchema(db);
     }
+  }
+
+  Future<void> _rebuildSchema(Database db) async {
+    await db.execute('DROP TABLE IF EXISTS session_participants');
+    await db.execute('DROP TABLE IF EXISTS attendance');
+    await db.execute('DROP TABLE IF EXISTS payments');
+    await db.execute('DROP TABLE IF EXISTS sessions');
+    await db.execute('DROP TABLE IF EXISTS participants');
+    await _onCreate(db, 3);
   }
 
   Future<void> _clearAllData(Database db) async {
@@ -110,6 +131,7 @@ class BoxingDatabase {
   }
 
   Future<int> addParticipant({
+    required String personalId,
     required String name,
     required String phone,
     required int age,
@@ -118,7 +140,18 @@ class BoxingDatabase {
     required String notes,
   }) async {
     final db = await database;
+    final existing = await db.query(
+      'participants',
+      where: 'personalId = ?',
+      whereArgs: [personalId],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      throw Exception('A participant with this personal ID already exists.');
+    }
+
     final participantId = await db.insert('participants', {
+      'personalId': personalId,
       'name': name,
       'phone': phone,
       'age': age,
@@ -129,6 +162,7 @@ class BoxingDatabase {
     });
 
     await addPendingPayment(
+      participantPersonalId: personalId,
       participantName: name,
       amount: 0,
       description: 'Enrollment fee pending',
@@ -139,7 +173,7 @@ class BoxingDatabase {
   }
 
   Future<int> updateParticipant({
-    required int id,
+    required String personalId,
     required String name,
     required String phone,
     required int age,
@@ -151,6 +185,7 @@ class BoxingDatabase {
     return db.update(
       'participants',
       {
+        'personalId': personalId,
         'name': name,
         'phone': phone,
         'age': age,
@@ -158,8 +193,8 @@ class BoxingDatabase {
         'paymentMethod': paymentMethod,
         'notes': notes,
       },
-      where: 'id = ?',
-      whereArgs: [id],
+      where: 'personalId = ?',
+      whereArgs: [personalId],
     );
   }
 
@@ -206,6 +241,7 @@ class BoxingDatabase {
   }
 
   Future<int> addPayment({
+    required String participantPersonalId,
     required String participantName,
     required double amount,
     required String description,
@@ -217,8 +253,8 @@ class BoxingDatabase {
     if (status == 'paid') {
       final pendingPayment = await db.query(
         'payments',
-        where: 'participantName = ? AND status = ?',
-        whereArgs: [participantName, 'pending'],
+        where: 'participantPersonalId = ? AND status = ?',
+        whereArgs: [participantPersonalId, 'pending'],
         orderBy: 'createdAt ASC, id ASC',
         limit: 1,
       );
@@ -228,6 +264,8 @@ class BoxingDatabase {
         return db.update(
           'payments',
           {
+            'participantPersonalId': participantPersonalId,
+            'participantName': participantName,
             'amount': amount,
             'description': description,
             'method': method,
@@ -241,6 +279,7 @@ class BoxingDatabase {
     }
 
     return db.insert('payments', {
+      'participantPersonalId': participantPersonalId,
       'participantName': participantName,
       'amount': amount,
       'description': description,
@@ -251,6 +290,7 @@ class BoxingDatabase {
   }
 
   Future<int> addPendingPayment({
+    required String participantPersonalId,
     required String participantName,
     required double amount,
     required String description,
@@ -258,6 +298,7 @@ class BoxingDatabase {
   }) async {
     final db = await database;
     return db.insert('payments', {
+      'participantPersonalId': participantPersonalId,
       'participantName': participantName,
       'amount': amount,
       'description': description,
@@ -285,6 +326,7 @@ class BoxingDatabase {
 
   Future<int> updatePayment({
     required int id,
+    required String participantPersonalId,
     required String participantName,
     required double amount,
     required String description,
@@ -295,6 +337,7 @@ class BoxingDatabase {
     return db.update(
       'payments',
       {
+        'participantPersonalId': participantPersonalId,
         'participantName': participantName,
         'amount': amount,
         'description': description,
@@ -308,6 +351,7 @@ class BoxingDatabase {
   }
 
   Future<int> addAttendance({
+    required String participantPersonalId,
     required String participantName,
     required String sessionTitle,
     required String sessionDate,
@@ -316,6 +360,7 @@ class BoxingDatabase {
   }) async {
     final db = await database;
     return db.insert('attendance', {
+      'participantPersonalId': participantPersonalId,
       'participantName': participantName,
       'sessionTitle': sessionTitle,
       'sessionDate': sessionDate,
@@ -403,7 +448,7 @@ class BoxingDatabase {
       'session_participants',
       where: 'sessionId = ?',
       whereArgs: [sessionId],
-      orderBy: 'id ASC',
+      orderBy: 'participantPersonalId ASC, id ASC',
     );
   }
 
@@ -411,7 +456,7 @@ class BoxingDatabase {
     final db = await database;
     return db.query(
       'participants',
-      orderBy: 'id ASC',
+      orderBy: 'personalId ASC',
     );
   }
 

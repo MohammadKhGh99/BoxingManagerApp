@@ -12,6 +12,7 @@ class AppDataProvider extends ChangeNotifier {
   double revenueThisMonth = 0;
   double attendanceRate = 0;
   Map<String, dynamic>? todaySession;
+  List<Map<String, dynamic>> participants = [];
   List<Map<String, dynamic>> todaySessionParticipants = [];
   List<Map<String, dynamic>> recentAttendance = [];
   List<Map<String, dynamic>> upcomingSessions = [];
@@ -35,10 +36,10 @@ class AppDataProvider extends ChangeNotifier {
       _database.revenueThisMonth(),
       _database.attendanceRate(),
       _database.todaySession(),
+      _database.allParticipants(),
       _database.recentAttendance(),
       _database.upcomingSessions(),
       _database.pendingPayments(),
-      _database.participantNames(),
     ]);
 
     totalParticipants = results[0] as int;
@@ -46,11 +47,12 @@ class AppDataProvider extends ChangeNotifier {
     revenueThisMonth = results[2] as double;
     attendanceRate = results[3] as double;
     todaySession = results[4] as Map<String, dynamic>?;
-    recentAttendance = results[5] as List<Map<String, dynamic>>;
-    upcomingSessions = results[6] as List<Map<String, dynamic>>;
-    pendingPayments = results[7] as List<Map<String, dynamic>>;
-    final loadedParticipantNames = results[8] as List<String>;
-    participantNames = loadedParticipantNames
+    participants = results[5] as List<Map<String, dynamic>>;
+    recentAttendance = results[6] as List<Map<String, dynamic>>;
+    upcomingSessions = results[7] as List<Map<String, dynamic>>;
+    pendingPayments = results[8] as List<Map<String, dynamic>>;
+    participantNames = participants
+        .map((participant) => participant['name']?.toString() ?? '')
         .map((name) => name.trim())
         .where((name) => name.isNotEmpty)
         .toSet()
@@ -69,6 +71,7 @@ class AppDataProvider extends ChangeNotifier {
   }
 
   Future<void> addParticipant({
+    required String personalId,
     required String name,
     required String phone,
     required int age,
@@ -77,6 +80,7 @@ class AppDataProvider extends ChangeNotifier {
     required String notes,
   }) async {
     await _database.addParticipant(
+      personalId: personalId,
       name: name,
       phone: phone,
       age: age,
@@ -88,7 +92,7 @@ class AppDataProvider extends ChangeNotifier {
   }
 
   Future<void> updateParticipant({
-    required int id,
+    required String personalId,
     required String name,
     required String phone,
     required int age,
@@ -97,7 +101,7 @@ class AppDataProvider extends ChangeNotifier {
     required String notes,
   }) async {
     await _database.updateParticipant(
-      id: id,
+      personalId: personalId,
       name: name,
       phone: phone,
       age: age,
@@ -145,6 +149,7 @@ class AppDataProvider extends ChangeNotifier {
   }
 
   Future<void> addPayment({
+    required String participantPersonalId,
     required String participantName,
     required double amount,
     required String description,
@@ -152,6 +157,7 @@ class AppDataProvider extends ChangeNotifier {
     required String status,
   }) async {
     await _database.addPayment(
+      participantPersonalId: participantPersonalId,
       participantName: participantName,
       amount: amount,
       description: description,
@@ -174,6 +180,7 @@ class AppDataProvider extends ChangeNotifier {
 
   Future<void> updatePayment({
     required int id,
+    required String participantPersonalId,
     required String participantName,
     required double amount,
     required String description,
@@ -182,6 +189,7 @@ class AppDataProvider extends ChangeNotifier {
   }) async {
     await _database.updatePayment(
       id: id,
+      participantPersonalId: participantPersonalId,
       participantName: participantName,
       amount: amount,
       description: description,
@@ -192,6 +200,7 @@ class AppDataProvider extends ChangeNotifier {
   }
 
   Future<void> addAttendance({
+    required String participantPersonalId,
     required String participantName,
     required String sessionTitle,
     required String sessionDate,
@@ -199,6 +208,7 @@ class AppDataProvider extends ChangeNotifier {
     required String paymentStatus,
   }) async {
     await _database.addAttendance(
+      participantPersonalId: participantPersonalId,
       participantName: participantName,
       sessionTitle: sessionTitle,
       sessionDate: sessionDate,
