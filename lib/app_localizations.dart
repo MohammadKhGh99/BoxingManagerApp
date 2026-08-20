@@ -9,7 +9,8 @@ class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   Map<String, String> get _localizedStrings {
     switch (locale.languageCode) {
@@ -90,11 +91,29 @@ class AppLocalizations {
   String get english => _localizedStrings['english']!;
   String get arabic => _localizedStrings['arabic']!;
   String get hebrew => _localizedStrings['hebrew']!;
+  String get cash => _localizedStrings['cash']!;
+  String get creditCard => _localizedStrings['creditCard']!;
+  String get bankTransfer => _localizedStrings['bankTransfer']!;
+  String get monthlyPlan => _localizedStrings['monthlyPlan']!;
+  String get mobileApp => _localizedStrings['mobileApp']!;
+  String get personalIdHint => _localizedStrings['personalIdHint']!;
+  String get nameHint => _localizedStrings['nameHint']!;
+  String get phoneHint => _localizedStrings['phoneHint']!;
+  String get ageHint => _localizedStrings['ageHint']!;
+  String get notesHint => _localizedStrings['notesHint']!;
+  String get searchPersonalId => _localizedStrings['searchPersonalId']!;
+  String get amountHint => _localizedStrings['amountHint']!;
+  String get paymentMethodHint => _localizedStrings['paymentMethodHint']!;
+  String get descriptionHint => _localizedStrings['descriptionHint']!;
+  String get sessionTitleHint => _localizedStrings['sessionTitleHint']!;
+  String get sessionTypeHint => _localizedStrings['sessionTypeHint']!;
+  String get durationHint => _localizedStrings['durationHint']!;
 
   // English strings
   static const Map<String, String> _englishStrings = {
     'title': 'Boxing Coach Manager',
-    'subtitle': 'Manage your boxing sessions, participants, attendance, and payments',
+    'subtitle':
+        'Manage your boxing sessions, participants, attendance, and payments',
     'totalParticipants': 'Total Participants',
     'sessionsThisMonth': 'Sessions This Month',
     'revenueThisMonth': 'Revenue This Month',
@@ -161,6 +180,23 @@ class AppLocalizations {
     'english': 'English',
     'arabic': 'Arabic',
     'hebrew': 'Hebrew',
+    'cash': 'Cash',
+    'creditCard': 'Credit Card',
+    'bankTransfer': 'Bank Transfer',
+    'monthlyPlan': 'Monthly Plan',
+    'mobileApp': 'Mobile App',
+    'personalIdHint': 'e.g. P-1024',
+    'nameHint': 'e.g. John Smith',
+    'phoneHint': 'e.g. 050 000 0000',
+    'ageHint': 'e.g. 22',
+    'notesHint': 'Any additional information...',
+    'searchPersonalId': 'Search by Personal ID',
+    'amountHint': 'e.g. 50',
+    'paymentMethodHint': 'Payment method',
+    'descriptionHint': 'Description',
+    'sessionTitleHint': 'e.g. Friday Sparring',
+    'sessionTypeHint': 'e.g. Group Training',
+    'durationHint': 'min',
   };
 
   // Arabic strings
@@ -233,6 +269,23 @@ class AppLocalizations {
     'english': 'الإنجليزية',
     'arabic': 'العربية',
     'hebrew': 'العبرية',
+    'cash': 'نقداً',
+    'creditCard': 'بطاقة ائتمان',
+    'bankTransfer': 'تحويل بنكي',
+    'monthlyPlan': 'خطة شهرية',
+    'mobileApp': 'تطبيق الهاتف',
+    'personalIdHint': 'مثال: P-1024',
+    'nameHint': 'مثال: أحمد محمد',
+    'phoneHint': 'مثال: 050 000 0000',
+    'ageHint': 'مثال: 22',
+    'notesHint': 'أي معلومات إضافية...',
+    'searchPersonalId': 'البحث حسب الرقم التعريفي',
+    'amountHint': 'مثال: 50',
+    'paymentMethodHint': 'طريقة الدفع',
+    'descriptionHint': 'الوصف',
+    'sessionTitleHint': 'مثال: تدريب الملاكمة',
+    'sessionTypeHint': 'مثال: تدريب جماعي',
+    'durationHint': 'دقيقة',
   };
 
   // Hebrew strings
@@ -305,10 +358,28 @@ class AppLocalizations {
     'english': 'אנגלית',
     'arabic': 'ערבית',
     'hebrew': 'עברית',
+    'cash': 'מזומן',
+    'creditCard': 'כרטיס אשראי',
+    'bankTransfer': 'העברה בנקאית',
+    'monthlyPlan': 'תוכנית חודשית',
+    'mobileApp': 'אפליקציה לנייד',
+    'personalIdHint': 'לדוגמה: P-1024',
+    'nameHint': 'לדוגמה: ישראל ישראלי',
+    'phoneHint': 'לדוגמה: 050 000 0000',
+    'ageHint': 'לדוגמה: 22',
+    'notesHint': 'כל מידע נוסף...',
+    'searchPersonalId': 'חיפוש לפי מזהה אישי',
+    'amountHint': 'לדוגמה: 50',
+    'paymentMethodHint': 'שיטת תשלום',
+    'descriptionHint': 'תיאור',
+    'sessionTitleHint': 'לדוגמה: אימון קרבות',
+    'sessionTypeHint': 'לדוגמה: אימון קבוצתי',
+    'durationHint': 'דקות',
   };
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override

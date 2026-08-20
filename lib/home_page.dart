@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:boxing_coach_manager/accent_color_provider.dart';
 import 'package:boxing_coach_manager/app_localizations.dart';
 import 'package:boxing_coach_manager/providers/app_data_provider.dart';
 import 'package:boxing_coach_manager/locale_provider.dart';
@@ -14,12 +18,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // final int _selectedIndex = 0;
+  Color _activeAccentColor = Colors.red;
 
   @override
   Widget build(BuildContext context) {
     final appLocalizations = AppLocalizations.of(context)!;
     final dataProvider = context.watch<AppDataProvider>();
+    _activeAccentColor = context.watch<AccentColorProvider>().color;
     final isRTL = Directionality.of(context) == TextDirection.rtl;
 
     if (dataProvider.isLoading) {
@@ -41,6 +46,16 @@ class _HomePageState extends State<HomePage> {
             icon: const Icon(Icons.backup),
             tooltip: 'Backup database',
             onPressed: () => _backupDatabase(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.restore),
+            tooltip: 'Restore database',
+            onPressed: () => _restoreDatabase(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.palette_outlined),
+            tooltip: 'Change accent color',
+            onPressed: () => _showAccentColorDialog(context),
           ),
           IconButton(
             icon: const Icon(Icons.language),
@@ -68,7 +83,7 @@ class _HomePageState extends State<HomePage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showFabMenu(context, appLocalizations),
-        backgroundColor: Colors.red,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
@@ -78,11 +93,7 @@ class _HomePageState extends State<HomePage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFD32F2F), Color(0xFF9A0007)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Theme.of(context).colorScheme.primary,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -115,10 +126,10 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-          const CircleAvatar(
+          CircleAvatar(
             backgroundColor: Colors.white,
             radius: 30,
-            child: Icon(Icons.person, size: 40, color: Colors.red),
+            child: Icon(Icons.person, size: 40, color: _activeAccentColor),
           ),
         ],
       ),
@@ -149,7 +160,7 @@ class _HomePageState extends State<HomePage> {
         ),
         _buildStatCard(
           icon: Icons.attach_money,
-          value: '\$${dataProvider.revenueThisMonth.toStringAsFixed(0)}',
+          value: '₪${dataProvider.revenueThisMonth.toStringAsFixed(0)}',
           label: appLocalizations.revenueThisMonth,
           context: context,
         ),
@@ -179,7 +190,7 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 40, color: Colors.red),
+            Icon(icon, size: 40, color: _activeAccentColor),
             const SizedBox(height: 10),
             Text(
               value,
@@ -275,7 +286,7 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.calendar_today, color: Colors.red),
+                    Icon(Icons.calendar_today, color: _activeAccentColor),
                     const SizedBox(width: 10),
                     Text(
                       appLocalizations.todaysSession,
@@ -290,7 +301,7 @@ class _HomePageState extends State<HomePage> {
                   icon: const Icon(Icons.add),
                   label: Text(appLocalizations.newSession),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
+                    backgroundColor: _activeAccentColor,
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () {
@@ -331,7 +342,7 @@ class _HomePageState extends State<HomePage> {
       color: Colors.grey[50],
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: Colors.red, width: 2),
+        side: BorderSide(color: _activeAccentColor, width: 2),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -411,7 +422,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             Row(
               children: [
-                const Icon(Icons.list_alt, color: Colors.red),
+                Icon(Icons.list_alt, color: _activeAccentColor),
                 const SizedBox(width: 10),
                 Text(
                   appLocalizations.recentAttendance,
@@ -445,7 +456,7 @@ class _HomePageState extends State<HomePage> {
                       Chip(
                         backgroundColor: data['status'] == 'attended'
                             ? Colors.green[50]
-                            : Colors.red[50],
+                            : _activeAccentColor.withValues(alpha: 0.08),
                         label: Text(
                           data['status'] == 'attended'
                               ? appLocalizations.attended
@@ -453,7 +464,7 @@ class _HomePageState extends State<HomePage> {
                           style: TextStyle(
                             color: data['status'] == 'attended'
                                 ? Colors.green
-                                : Colors.red,
+                                : _activeAccentColor,
                           ),
                         ),
                       ),
@@ -496,7 +507,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             Row(
               children: [
-                const Icon(Icons.add_circle, color: Colors.red),
+                Icon(Icons.add_circle, color: _activeAccentColor),
                 const SizedBox(width: 10),
                 Text(
                   appLocalizations.addNew,
@@ -554,8 +565,8 @@ class _HomePageState extends State<HomePage> {
   }) {
     return OutlinedButton(
       style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.red,
-        side: const BorderSide(color: Colors.red),
+        foregroundColor: _activeAccentColor,
+        side: BorderSide(color: _activeAccentColor),
         padding: const EdgeInsets.symmetric(vertical: 15),
       ),
       onPressed: onPressed,
@@ -583,7 +594,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             Row(
               children: [
-                const Icon(Icons.upcoming, color: Colors.red),
+                Icon(Icons.upcoming, color: _activeAccentColor),
                 const SizedBox(width: 10),
                 Text(
                   appLocalizations.upcomingSessions,
@@ -693,7 +704,7 @@ class _HomePageState extends State<HomePage> {
                       Chip(
                         backgroundColor: Colors.orange[50],
                         label: Text(
-                          '\$${(payment['amount'] as num).toStringAsFixed(0)}',
+                          '₪${(payment['amount'] as num).toStringAsFixed(0)}',
                           style: const TextStyle(color: Colors.orange),
                         ),
                       ),
@@ -717,7 +728,6 @@ class _HomePageState extends State<HomePage> {
     final ageController = TextEditingController();
     final notesController = TextEditingController();
     String selectedWeightClass = 'Lightweight';
-    String selectedPaymentMethod = 'Cash';
 
     final weightClasses = [
       'Minimumweight',
@@ -740,13 +750,6 @@ class _HomePageState extends State<HomePage> {
       'Super Heavyweight',
     ];
 
-    final paymentMethods = [
-      'Cash',
-      'Credit Card',
-      'Bank Transfer',
-      'Monthly Plan'
-    ];
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -767,12 +770,8 @@ class _HomePageState extends State<HomePage> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 20),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFFD32F2F), Color(0xFF9A0007)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       child: Row(
                         children: [
@@ -826,7 +825,7 @@ class _HomePageState extends State<HomePage> {
                               TextFormField(
                                 controller: personalIdController,
                                 decoration: _dialogInputDecoration(
-                                  hint: 'e.g. P-1024',
+                                  hint: appLocalizations.personalIdHint,
                                   icon: Icons.badge_outlined,
                                 ),
                                 validator: (v) =>
@@ -843,7 +842,7 @@ class _HomePageState extends State<HomePage> {
                               TextFormField(
                                 controller: nameController,
                                 decoration: _dialogInputDecoration(
-                                  hint: 'e.g. John Smith',
+                                  hint: appLocalizations.nameHint,
                                   icon: Icons.person_outline,
                                 ),
                                 validator: (v) =>
@@ -868,7 +867,7 @@ class _HomePageState extends State<HomePage> {
                                           keyboardType: TextInputType.phone,
                                           maxLength: 10,
                                           decoration: _dialogInputDecoration(
-                                            hint: 'e.g. 050 000 0000',
+                                            hint: appLocalizations.phoneHint,
                                             icon: Icons.phone_outlined,
                                           ),
                                           validator: (v) =>
@@ -893,7 +892,7 @@ class _HomePageState extends State<HomePage> {
                                           keyboardType: TextInputType.number,
                                           maxLength: 3,
                                           decoration: _dialogInputDecoration(
-                                            hint: 'e.g. 22',
+                                            hint: appLocalizations.ageHint,
                                             icon: Icons.cake_outlined,
                                           ),
                                           validator: (v) {
@@ -916,67 +915,24 @@ class _HomePageState extends State<HomePage> {
                               ),
                               const SizedBox(height: 16),
 
-                              // Weight Class + Payment side by side
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _dialogFieldLabel(
-                                            appLocalizations.weightClass),
-                                        const SizedBox(height: 6),
-                                        DropdownButtonFormField<String>(
-                                          initialValue: selectedWeightClass,
-                                          decoration: _dialogInputDecoration(
-                                            hint: '',
-                                            icon: Icons.monitor_weight_outlined,
-                                          ),
-                                          isExpanded: true,
-                                          items: weightClasses
-                                              .map((w) => DropdownMenuItem(
-                                                  value: w,
-                                                  child: Text(w,
-                                                      style: const TextStyle(
-                                                          fontSize: 13))))
-                                              .toList(),
-                                          onChanged: (v) => setDialogState(
-                                              () => selectedWeightClass = v!),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _dialogFieldLabel(
-                                            appLocalizations.paymentMethod),
-                                        const SizedBox(height: 6),
-                                        DropdownButtonFormField<String>(
-                                          initialValue: selectedPaymentMethod,
-                                          decoration: _dialogInputDecoration(
-                                            hint: '',
-                                            icon: Icons.payment_outlined,
-                                          ),
-                                          isExpanded: true,
-                                          items: paymentMethods
-                                              .map((p) => DropdownMenuItem(
-                                                  value: p,
-                                                  child: Text(p,
-                                                      style: const TextStyle(
-                                                          fontSize: 13))))
-                                              .toList(),
-                                          onChanged: (v) => setDialogState(
-                                              () => selectedPaymentMethod = v!),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                              _dialogFieldLabel(appLocalizations.weightClass),
+                              const SizedBox(height: 6),
+                              DropdownButtonFormField<String>(
+                                initialValue: selectedWeightClass,
+                                decoration: _dialogInputDecoration(
+                                  hint: '',
+                                  icon: Icons.monitor_weight_outlined,
+                                ),
+                                isExpanded: true,
+                                items: weightClasses
+                                    .map((w) => DropdownMenuItem(
+                                        value: w,
+                                        child: Text(w,
+                                            style:
+                                                const TextStyle(fontSize: 13))))
+                                    .toList(),
+                                onChanged: (v) => setDialogState(
+                                    () => selectedWeightClass = v!),
                               ),
                               const SizedBox(height: 16),
 
@@ -987,7 +943,7 @@ class _HomePageState extends State<HomePage> {
                                 controller: notesController,
                                 maxLines: 3,
                                 decoration: _dialogInputDecoration(
-                                  hint: 'Any additional information...',
+                                  hint: appLocalizations.notesHint,
                                   icon: Icons.notes_outlined,
                                 ),
                               ),
@@ -1013,7 +969,8 @@ class _HomePageState extends State<HomePage> {
                             icon: const Icon(Icons.check),
                             label: Text(appLocalizations.save),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFD32F2F),
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 20, vertical: 12),
@@ -1035,7 +992,7 @@ class _HomePageState extends State<HomePage> {
                                         age: int.parse(
                                             ageController.text.trim()),
                                         weightClass: selectedWeightClass,
-                                        paymentMethod: selectedPaymentMethod,
+                                        paymentMethod: 'Cash',
                                         notes: notesController.text.trim(),
                                       );
                                   navigator.pop();
@@ -1062,7 +1019,7 @@ class _HomePageState extends State<HomePage> {
                                   messenger.showSnackBar(
                                     SnackBar(
                                       content: Text(error.toString()),
-                                      backgroundColor: Colors.red[700],
+                                      backgroundColor: _activeAccentColor,
                                     ),
                                   );
                                 }
@@ -1095,7 +1052,7 @@ class _HomePageState extends State<HomePage> {
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
-      prefixIcon: Icon(icon, size: 20, color: Colors.red[300]),
+      prefixIcon: Icon(icon, size: 20, color: _activeAccentColor),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -1107,11 +1064,14 @@ class _HomePageState extends State<HomePage> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 2),
+        borderSide: BorderSide(
+          color: _activeAccentColor,
+          width: 2,
+        ),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Colors.red),
+        borderSide: BorderSide(color: _activeAccentColor),
       ),
       filled: true,
       fillColor: Colors.grey[50],
@@ -1146,12 +1106,8 @@ class _HomePageState extends State<HomePage> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 20),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFFD32F2F), Color(0xFF9A0007)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       child: Row(
                         children: [
@@ -1204,7 +1160,7 @@ class _HomePageState extends State<HomePage> {
                               TextFormField(
                                 controller: titleController,
                                 decoration: _dialogInputDecoration(
-                                  hint: 'e.g. Friday Sparring',
+                                  hint: appLocalizations.sessionTitleHint,
                                   icon: Icons.title,
                                 ),
                                 validator: (v) =>
@@ -1227,7 +1183,8 @@ class _HomePageState extends State<HomePage> {
                                         TextFormField(
                                           controller: sessionTypeController,
                                           decoration: _dialogInputDecoration(
-                                            hint: 'e.g. Group Training',
+                                            hint: appLocalizations
+                                                .sessionTypeHint,
                                             icon: Icons.sports_mma,
                                           ),
                                           validator: (v) =>
@@ -1251,7 +1208,7 @@ class _HomePageState extends State<HomePage> {
                                         TextFormField(
                                           controller: durationController,
                                           decoration: _dialogInputDecoration(
-                                            hint: 'min',
+                                            hint: appLocalizations.durationHint,
                                             icon: Icons.timer_outlined,
                                           ),
                                           keyboardType: TextInputType.number,
@@ -1375,7 +1332,8 @@ class _HomePageState extends State<HomePage> {
                             icon: const Icon(Icons.check),
                             label: Text(appLocalizations.save),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFD32F2F),
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 20, vertical: 12),
@@ -1441,7 +1399,7 @@ class _HomePageState extends State<HomePage> {
       'Cash',
       'Credit Card',
       'Bank Transfer',
-      'Mobile App'
+      'Mobile App',
     ];
 
     showDialog(
@@ -1483,12 +1441,8 @@ class _HomePageState extends State<HomePage> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 20),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFFD32F2F), Color(0xFF9A0007)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       child: Row(
                         children: [
@@ -1578,7 +1532,7 @@ class _HomePageState extends State<HomePage> {
                                   }
                                 }),
                                 decoration: _dialogInputDecoration(
-                                  hint: 'Search by Personal ID',
+                                  hint: appLocalizations.searchPersonalId,
                                   icon: Icons.search,
                                 ),
                               ),
@@ -1629,12 +1583,12 @@ class _HomePageState extends State<HomePage> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         _dialogFieldLabel(
-                                            '${appLocalizations.amount} (\$) *'),
+                                            '${appLocalizations.amount} (₪) *'),
                                         const SizedBox(height: 6),
                                         TextFormField(
                                           controller: amountController,
                                           decoration: _dialogInputDecoration(
-                                            hint: 'e.g. 50',
+                                            hint: appLocalizations.amountHint,
                                             icon: Icons.payment,
                                           ),
                                           keyboardType: const TextInputType
@@ -1666,7 +1620,9 @@ class _HomePageState extends State<HomePage> {
                                           items: paymentMethods
                                               .map((m) => DropdownMenuItem(
                                                   value: m,
-                                                  child: Text(m,
+                                                  child: Text(
+                                                      _localizedPaymentMethod(
+                                                          appLocalizations, m),
                                                       style: const TextStyle(
                                                           fontSize: 13))))
                                               .toList(),
@@ -1698,7 +1654,8 @@ class _HomePageState extends State<HomePage> {
                             icon: const Icon(Icons.check),
                             label: Text(appLocalizations.save),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFD32F2F),
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 20, vertical: 12),
@@ -1741,7 +1698,7 @@ class _HomePageState extends State<HomePage> {
                                 messenger.showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                        'Payment of \$${amountController.text} from ${_participantLabel(selectedParticipant)} marked as paid.'),
+                                        'Payment of ₪${amountController.text} from ${_participantLabel(selectedParticipant)} marked as paid.'),
                                     backgroundColor: Colors.green[700],
                                     behavior: SnackBarBehavior.floating,
                                   ),
@@ -1868,12 +1825,8 @@ class _HomePageState extends State<HomePage> {
                         horizontal: 24,
                         vertical: 20,
                       ),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFFD32F2F), Color(0xFF9A0007)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       child: Row(
                         children: [
@@ -2003,7 +1956,8 @@ class _HomePageState extends State<HomePage> {
                                           }
                                         }),
                                         decoration: _dialogInputDecoration(
-                                          hint: 'Search by Personal ID',
+                                          hint:
+                                              appLocalizations.searchPersonalId,
                                           icon: Icons.search,
                                         ),
                                       ),
@@ -2138,7 +2092,8 @@ class _HomePageState extends State<HomePage> {
                             icon: const Icon(Icons.check),
                             label: Text(appLocalizations.save),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFD32F2F),
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 20,
@@ -2179,6 +2134,25 @@ class _HomePageState extends State<HomePage> {
 
                               final navigator = Navigator.of(context);
                               final messenger = ScaffoldMessenger.of(context);
+                              // Normalize the selected (localized) status into a
+                              // canonical status value stored in the DB.
+                              String statusValue;
+                              if (selectedStatus == appLocalizations.present ||
+                                  selectedStatus == appLocalizations.attended) {
+                                statusValue = 'attended';
+                              } else if (selectedStatus ==
+                                  appLocalizations.absent) {
+                                statusValue = 'absent';
+                              } else if (selectedStatus ==
+                                  appLocalizations.late) {
+                                statusValue = 'late';
+                              } else if (selectedStatus ==
+                                  appLocalizations.excused) {
+                                statusValue = 'excused';
+                              } else {
+                                statusValue = selectedStatus.toLowerCase();
+                              }
+
                               await context
                                   .read<AppDataProvider>()
                                   .addAttendance(
@@ -2190,7 +2164,8 @@ class _HomePageState extends State<HomePage> {
                                             '',
                                     sessionTitle: selectedSessionTitle,
                                     sessionDate: selectedSessionDate,
-                                    status: selectedStatus.toLowerCase(),
+                                    status: statusValue,
+                                    sessionId: selectedSessionId,
                                     paymentStatus: selectedPaymentStatus,
                                   );
                               navigator.pop();
@@ -2302,6 +2277,24 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  String _localizedPaymentMethod(
+      AppLocalizations localizations, String method) {
+    switch (method) {
+      case 'Cash':
+        return localizations.cash;
+      case 'Credit Card':
+        return localizations.creditCard;
+      case 'Bank Transfer':
+        return localizations.bankTransfer;
+      case 'Monthly Plan':
+        return localizations.monthlyPlan;
+      case 'Mobile App':
+        return localizations.mobileApp;
+      default:
+        return method;
+    }
+  }
+
   String _participantLabelFromMap(Map<String, dynamic> participant) {
     return _participantLabel(participant);
   }
@@ -2377,12 +2370,8 @@ class _HomePageState extends State<HomePage> {
                           horizontal: 24,
                           vertical: 20,
                         ),
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Color(0xFFD32F2F), Color(0xFF9A0007)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                         child: Row(
                           children: [
@@ -2424,7 +2413,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       TabBar(
-                        labelColor: Color(0xFFD32F2F),
+                        labelColor: Theme.of(context).colorScheme.primary,
                         unselectedLabelColor: Colors.grey,
                         tabs: [
                           Tab(text: appLocalizations.participants),
@@ -2554,7 +2543,7 @@ class _HomePageState extends State<HomePage> {
             onChanged: onSearchChanged,
             decoration: InputDecoration(
               labelText: 'Search by Personal ID',
-              hintText: 'Type participant ID',
+              hintText: appLocalizations.searchPersonalId,
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -2584,15 +2573,14 @@ class _HomePageState extends State<HomePage> {
                     final phone = participant['phone']?.toString() ?? '';
                     final weightClass =
                         participant['weightClass']?.toString() ?? '';
-                    final paymentMethod =
-                        participant['paymentMethod']?.toString() ?? '';
 
                     return Card(
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: Colors.red[50],
+                          backgroundColor:
+                              _activeAccentColor.withValues(alpha: 0.08),
                           child: Text(participantId,
-                              style: const TextStyle(color: Colors.red)),
+                              style: TextStyle(color: _activeAccentColor)),
                         ),
                         title: Text(
                           '#$participantId $participantName',
@@ -2604,12 +2592,10 @@ class _HomePageState extends State<HomePage> {
                               '${appLocalizations.phone}: $phone',
                             if (weightClass.isNotEmpty)
                               '${appLocalizations.weightClass}: $weightClass',
-                            if (paymentMethod.isNotEmpty)
-                              '${appLocalizations.paymentMethod}: $paymentMethod',
                           ].join(' • '),
                         ),
                         trailing: IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.red),
+                          icon: Icon(Icons.edit, color: _activeAccentColor),
                           onPressed: () => onEdit(participant),
                         ),
                       ),
@@ -2645,29 +2631,57 @@ class _HomePageState extends State<HomePage> {
         final durationMinutes = session['durationMinutes']?.toString() ?? '';
         final participantsCount =
             session['participantsCount']?.toString() ?? '0';
+        final attendedParticipants =
+            (session['attendedParticipants'] as List<dynamic>? ?? [])
+                .map((participant) => participant.toString())
+                .where((participant) => participant.isNotEmpty)
+                .toList();
+        final sessionDetails = [
+          '$sessionDate $sessionTime',
+          if (sessionType.isNotEmpty) sessionType,
+          if (durationMinutes.isNotEmpty) '$durationMinutes min',
+          '$participantsCount participants',
+        ].join(' • ');
 
         return Card(
-          child: ListTile(
+          child: ExpansionTile(
             leading: CircleAvatar(
-              backgroundColor: Colors.red[50],
-              child: Text(sessionId, style: const TextStyle(color: Colors.red)),
+              backgroundColor: _activeAccentColor.withValues(alpha: 0.08),
+              child:
+                  Text(sessionId, style: TextStyle(color: _activeAccentColor)),
             ),
             title: Text(
               '#$sessionId $title',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            subtitle: Text(
-              [
-                '$sessionDate $sessionTime',
-                if (sessionType.isNotEmpty) sessionType,
-                if (durationMinutes.isNotEmpty) '$durationMinutes min',
-                '$participantsCount participants',
-              ].join(' • '),
-            ),
+            subtitle: Text(sessionDetails),
             trailing: IconButton(
-              icon: const Icon(Icons.edit, color: Colors.red),
+              icon: Icon(Icons.edit, color: _activeAccentColor),
               onPressed: () => onEdit(session),
             ),
+            children: [
+              if (attendedParticipants.isEmpty)
+                const ListTile(
+                  dense: true,
+                  title: Text('Attended participants: None'),
+                )
+              else
+                SizedBox(
+                  height:
+                      (attendedParticipants.length * 44.0).clamp(0.0, 132.0),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    itemCount: attendedParticipants.length,
+                    itemBuilder: (context, participantIndex) {
+                      return ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.person_outline, size: 20),
+                        title: Text(attendedParticipants[participantIndex]),
+                      );
+                    },
+                  ),
+                ),
+            ],
           ),
         );
       },
@@ -2728,7 +2742,7 @@ class _HomePageState extends State<HomePage> {
                   backgroundColor:
                       status == 'paid' ? Colors.green[50] : Colors.orange[50],
                   label: Text(
-                    '\$${amount.toStringAsFixed(0)}',
+                    '₪${amount.toStringAsFixed(0)}',
                     style: TextStyle(
                       color: status == 'paid' ? Colors.green : Colors.orange,
                     ),
@@ -2736,7 +2750,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.red),
+                  icon: Icon(Icons.edit, color: _activeAccentColor),
                   onPressed: () => onEdit(payment),
                 ),
               ],
@@ -2769,10 +2783,6 @@ class _HomePageState extends State<HomePage> {
         participant['weightClass']?.toString().trim().isNotEmpty == true
             ? participant['weightClass'].toString()
             : 'Lightweight';
-    String selectedPaymentMethod =
-        participant['paymentMethod']?.toString().trim().isNotEmpty == true
-            ? participant['paymentMethod'].toString()
-            : 'Cash';
 
     final weightClasses = [
       'Minimumweight',
@@ -2793,13 +2803,6 @@ class _HomePageState extends State<HomePage> {
       'Cruiserweight',
       'Heavyweight',
       'Super Heavyweight',
-    ];
-
-    final paymentMethods = [
-      'Cash',
-      'Credit Card',
-      'Bank Transfer',
-      'Monthly Plan',
     ];
 
     final participantId = participant['personalId']?.toString() ?? '-';
@@ -2824,12 +2827,8 @@ class _HomePageState extends State<HomePage> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 20),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFFD32F2F), Color(0xFF9A0007)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       child: Row(
                         children: [
@@ -2885,7 +2884,7 @@ class _HomePageState extends State<HomePage> {
                                 controller: personalIdController,
                                 readOnly: true,
                                 decoration: _dialogInputDecoration(
-                                  hint: 'Participant identifier',
+                                  hint: appLocalizations.personalIdHint,
                                   icon: Icons.badge_outlined,
                                 ),
                                 validator: (v) =>
@@ -2900,7 +2899,7 @@ class _HomePageState extends State<HomePage> {
                               TextFormField(
                                 controller: nameController,
                                 decoration: _dialogInputDecoration(
-                                  hint: 'Enter name',
+                                  hint: appLocalizations.nameHint,
                                   icon: Icons.person,
                                 ),
                                 validator: (v) =>
@@ -2922,7 +2921,7 @@ class _HomePageState extends State<HomePage> {
                                         TextFormField(
                                           controller: phoneController,
                                           decoration: _dialogInputDecoration(
-                                            hint: 'Phone number',
+                                            hint: appLocalizations.phoneHint,
                                             icon: Icons.phone,
                                           ),
                                         ),
@@ -2940,7 +2939,7 @@ class _HomePageState extends State<HomePage> {
                                         TextFormField(
                                           controller: ageController,
                                           decoration: _dialogInputDecoration(
-                                            hint: 'Age',
+                                            hint: appLocalizations.age,
                                             icon: Icons.cake,
                                           ),
                                           keyboardType: TextInputType.number,
@@ -2961,77 +2960,28 @@ class _HomePageState extends State<HomePage> {
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _dialogFieldLabel(
-                                            appLocalizations.weightClass),
-                                        const SizedBox(height: 6),
-                                        DropdownButtonFormField<String>(
-                                          initialValue: selectedWeightClass,
-                                          decoration: _dialogInputDecoration(
-                                            hint: '',
-                                            icon: Icons.monitor_weight,
+                              _dialogFieldLabel(appLocalizations.weightClass),
+                              const SizedBox(height: 6),
+                              DropdownButtonFormField<String>(
+                                initialValue: selectedWeightClass,
+                                decoration: _dialogInputDecoration(
+                                  hint: '',
+                                  icon: Icons.monitor_weight,
+                                ),
+                                isExpanded: true,
+                                items: weightClasses
+                                    .map((weightClass) => DropdownMenuItem(
+                                          value: weightClass,
+                                          child: Text(
+                                            weightClass,
+                                            style:
+                                                const TextStyle(fontSize: 13),
                                           ),
-                                          isExpanded: true,
-                                          items: weightClasses
-                                              .map((weightClass) =>
-                                                  DropdownMenuItem(
-                                                    value: weightClass,
-                                                    child: Text(
-                                                      weightClass,
-                                                      style: const TextStyle(
-                                                          fontSize: 13),
-                                                    ),
-                                                  ))
-                                              .toList(),
-                                          onChanged: (value) =>
-                                              setDialogState(() {
-                                            selectedWeightClass = value!;
-                                          }),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _dialogFieldLabel(
-                                            appLocalizations.paymentMethod),
-                                        const SizedBox(height: 6),
-                                        DropdownButtonFormField<String>(
-                                          initialValue: selectedPaymentMethod,
-                                          decoration: _dialogInputDecoration(
-                                            hint: '',
-                                            icon: Icons.account_balance_wallet,
-                                          ),
-                                          isExpanded: true,
-                                          items: paymentMethods
-                                              .map((method) => DropdownMenuItem(
-                                                    value: method,
-                                                    child: Text(
-                                                      method,
-                                                      style: const TextStyle(
-                                                          fontSize: 13),
-                                                    ),
-                                                  ))
-                                              .toList(),
-                                          onChanged: (value) =>
-                                              setDialogState(() {
-                                            selectedPaymentMethod = value!;
-                                          }),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                                        ))
+                                    .toList(),
+                                onChanged: (value) => setDialogState(() {
+                                  selectedWeightClass = value!;
+                                }),
                               ),
                               const SizedBox(height: 16),
                               _dialogFieldLabel(appLocalizations.notes),
@@ -3039,7 +2989,7 @@ class _HomePageState extends State<HomePage> {
                               TextFormField(
                                 controller: notesController,
                                 decoration: _dialogInputDecoration(
-                                  hint: 'Optional notes',
+                                  hint: appLocalizations.notesHint,
                                   icon: Icons.notes,
                                 ),
                                 maxLines: 3,
@@ -3067,7 +3017,8 @@ class _HomePageState extends State<HomePage> {
                             icon: const Icon(Icons.check),
                             label: Text(appLocalizations.saveChanges),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFD32F2F),
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 20, vertical: 12),
@@ -3089,7 +3040,9 @@ class _HomePageState extends State<HomePage> {
                                     phone: phoneController.text.trim(),
                                     age: int.parse(ageController.text.trim()),
                                     weightClass: selectedWeightClass,
-                                    paymentMethod: selectedPaymentMethod,
+                                    paymentMethod: participant['paymentMethod']
+                                            ?.toString() ??
+                                        'Cash',
                                     notes: notesController.text.trim(),
                                   );
 
@@ -3152,12 +3105,8 @@ class _HomePageState extends State<HomePage> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 20),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFFD32F2F), Color(0xFF9A0007)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       child: Row(
                         children: [
@@ -3232,7 +3181,7 @@ class _HomePageState extends State<HomePage> {
                                       TextFormField(
                                         controller: amountController,
                                         decoration: _dialogInputDecoration(
-                                          hint: 'Amount',
+                                          hint: appLocalizations.amount,
                                           icon: Icons.attach_money,
                                         ),
                                         keyboardType: const TextInputType
@@ -3286,7 +3235,7 @@ class _HomePageState extends State<HomePage> {
                             TextFormField(
                               controller: methodController,
                               decoration: _dialogInputDecoration(
-                                hint: 'Payment method',
+                                hint: appLocalizations.paymentMethodHint,
                                 icon: Icons.account_balance_wallet,
                               ),
                             ),
@@ -3296,7 +3245,7 @@ class _HomePageState extends State<HomePage> {
                             TextFormField(
                               controller: descriptionController,
                               decoration: _dialogInputDecoration(
-                                hint: 'Description',
+                                hint: appLocalizations.descriptionHint,
                                 icon: Icons.description,
                               ),
                               maxLines: 2,
@@ -3323,7 +3272,8 @@ class _HomePageState extends State<HomePage> {
                             icon: const Icon(Icons.check),
                             label: Text(appLocalizations.saveChanges),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFD32F2F),
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 20, vertical: 12),
@@ -3406,12 +3356,8 @@ class _HomePageState extends State<HomePage> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 20),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFFD32F2F), Color(0xFF9A0007)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       child: Row(
                         children: [
@@ -3467,7 +3413,7 @@ class _HomePageState extends State<HomePage> {
                               TextFormField(
                                 controller: titleController,
                                 decoration: _dialogInputDecoration(
-                                  hint: 'e.g. Friday Sparring',
+                                  hint: appLocalizations.sessionTitleHint,
                                   icon: Icons.title,
                                 ),
                                 validator: (v) =>
@@ -3490,7 +3436,8 @@ class _HomePageState extends State<HomePage> {
                                         TextFormField(
                                           controller: sessionTypeController,
                                           decoration: _dialogInputDecoration(
-                                            hint: 'e.g. Group Training',
+                                            hint: appLocalizations
+                                                .sessionTypeHint,
                                             icon: Icons.sports_mma,
                                           ),
                                           validator: (v) =>
@@ -3514,7 +3461,7 @@ class _HomePageState extends State<HomePage> {
                                         TextFormField(
                                           controller: durationController,
                                           decoration: _dialogInputDecoration(
-                                            hint: 'min',
+                                            hint: appLocalizations.durationHint,
                                             icon: Icons.timer_outlined,
                                           ),
                                           keyboardType: TextInputType.number,
@@ -3647,7 +3594,8 @@ class _HomePageState extends State<HomePage> {
                             icon: const Icon(Icons.check),
                             label: Text(appLocalizations.saveChanges),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFD32F2F),
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 20, vertical: 12),
@@ -3715,18 +3663,19 @@ class _HomePageState extends State<HomePage> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     appLocalizations.quickActions,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFFD32F2F),
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ),
               ),
               ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFFFEBEE),
-                  child: Icon(Icons.person_add, color: Color(0xFFD32F2F)),
+                leading: CircleAvatar(
+                  backgroundColor: const Color(0xFFFFEBEE),
+                  child: Icon(Icons.person_add,
+                      color: Theme.of(context).colorScheme.primary),
                 ),
                 title: Text(appLocalizations.addParticipant,
                     style: const TextStyle(fontWeight: FontWeight.w500)),
@@ -3736,9 +3685,10 @@ class _HomePageState extends State<HomePage> {
                 },
               ),
               ListTile(
-                leading: const CircleAvatar(
+                leading: CircleAvatar(
                   backgroundColor: Color(0xFFFFEBEE),
-                  child: Icon(Icons.calendar_today, color: Color(0xFFD32F2F)),
+                  child: Icon(Icons.calendar_today,
+                      color: Theme.of(context).colorScheme.primary),
                 ),
                 title: Text(appLocalizations.scheduleSession,
                     style: const TextStyle(fontWeight: FontWeight.w500)),
@@ -3748,9 +3698,10 @@ class _HomePageState extends State<HomePage> {
                 },
               ),
               ListTile(
-                leading: const CircleAvatar(
+                leading: CircleAvatar(
                   backgroundColor: Color(0xFFFFEBEE),
-                  child: Icon(Icons.payment, color: Color(0xFFD32F2F)),
+                  child: Icon(Icons.payment,
+                      color: Theme.of(context).colorScheme.primary),
                 ),
                 title: Text(appLocalizations.recordPayment,
                     style: const TextStyle(fontWeight: FontWeight.w500)),
@@ -3760,9 +3711,10 @@ class _HomePageState extends State<HomePage> {
                 },
               ),
               ListTile(
-                leading: const CircleAvatar(
+                leading: CircleAvatar(
                   backgroundColor: Color(0xFFFFEBEE),
-                  child: Icon(Icons.checklist, color: Color(0xFFD32F2F)),
+                  child: Icon(Icons.checklist,
+                      color: Theme.of(context).colorScheme.primary),
                 ),
                 title: Text(appLocalizations.takeAttendance,
                     style: const TextStyle(fontWeight: FontWeight.w500)),
@@ -3772,15 +3724,29 @@ class _HomePageState extends State<HomePage> {
                 },
               ),
               ListTile(
-                leading: const CircleAvatar(
+                leading: CircleAvatar(
                   backgroundColor: Color(0xFFFFEBEE),
-                  child: Icon(Icons.backup, color: Color(0xFFD32F2F)),
+                  child: Icon(Icons.backup,
+                      color: Theme.of(context).colorScheme.primary),
                 ),
                 title: Text(appLocalizations.backupDatabase,
                     style: const TextStyle(fontWeight: FontWeight.w500)),
                 onTap: () {
                   Navigator.pop(context);
                   _backupDatabase(context);
+                },
+              ),
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Color(0xFFFFEBEE),
+                  child: Icon(Icons.restore,
+                      color: Theme.of(context).colorScheme.primary),
+                ),
+                title: const Text('Restore Database',
+                    style: TextStyle(fontWeight: FontWeight.w500)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _restoreDatabase(context);
                 },
               ),
               const SizedBox(height: 16),
@@ -3834,6 +3800,52 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _showAccentColorDialog(BuildContext context) {
+    final accentColorProvider = context.read<AccentColorProvider>();
+    const accentColors = [
+      Colors.red,
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.teal,
+      Colors.indigo,
+      Colors.pink,
+      Colors.brown,
+    ];
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Accent color'),
+          content: Wrap(
+            spacing: 14,
+            runSpacing: 14,
+            children: accentColors.map((color) {
+              final isSelected = accentColorProvider.color.value == color.value;
+              return InkWell(
+                onTap: () async {
+                  await accentColorProvider.setColor(color);
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                  }
+                },
+                borderRadius: BorderRadius.circular(24),
+                child: CircleAvatar(
+                  radius: 22,
+                  backgroundColor: color,
+                  child: isSelected
+                      ? const Icon(Icons.check, color: Colors.white)
+                      : null,
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _backupDatabase(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -3859,6 +3871,68 @@ class _HomePageState extends State<HomePage> {
       }
       messenger.showSnackBar(
         SnackBar(content: Text('Backup failed: $error')),
+      );
+    }
+  }
+
+  Future<void> _restoreDatabase(BuildContext context) async {
+    final shouldRestore = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Restore Database?'),
+            content: const Text(
+              'This will replace all data on this device with the selected backup.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!shouldRestore || !context.mounted) {
+      return;
+    }
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.any,
+      dialogTitle: 'Select database backup',
+    );
+    if (result == null ||
+        result.files.single.path == null ||
+        !context.mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    final selectedPath = result.files.single.path!;
+    if (!selectedPath.toLowerCase().endsWith('.db')) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Please select a .db backup file.')),
+      );
+      return;
+    }
+
+    try {
+      await context.read<AppDataProvider>().restoreBackup(File(selectedPath));
+      if (!mounted) {
+        return;
+      }
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Database restored successfully.')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Restore failed: $error')),
       );
     }
   }

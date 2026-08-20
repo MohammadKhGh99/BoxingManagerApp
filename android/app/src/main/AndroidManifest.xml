@@ -5,9 +5,9 @@
         android:maxSdkVersion="28" />
 
     <application
-        android:label="boxing_coach_manager"
+        android:label="Boxing Manager"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
             android:exported="true"

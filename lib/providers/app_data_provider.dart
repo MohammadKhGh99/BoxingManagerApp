@@ -205,6 +205,7 @@ class AppDataProvider extends ChangeNotifier {
     required String sessionTitle,
     required String sessionDate,
     required String status,
+    int? sessionId,
     required String paymentStatus,
   }) async {
     await _database.addAttendance(
@@ -213,6 +214,7 @@ class AppDataProvider extends ChangeNotifier {
       sessionTitle: sessionTitle,
       sessionDate: sessionDate,
       status: status,
+      sessionId: sessionId,
       paymentStatus: paymentStatus,
     );
     await refresh();
@@ -235,5 +237,10 @@ class AppDataProvider extends ChangeNotifier {
     lastBackupPath = backupFile.path;
     notifyListeners();
     return backupFile;
+  }
+
+  Future<void> restoreBackup(File backupFile) async {
+    await _database.restoreBackup(backupFile);
+    await refresh();
   }
 }

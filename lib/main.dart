@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:boxing_coach_manager/accent_color_provider.dart';
 import 'package:boxing_coach_manager/app_localizations.dart';
 import 'package:boxing_coach_manager/home_page.dart';
 import 'package:boxing_coach_manager/providers/app_data_provider.dart';
@@ -32,17 +33,22 @@ class BoxingCoachApp extends StatelessWidget {
           create: (_) => LocaleProvider(),
         ),
         ChangeNotifierProvider(
+          create: (_) => AccentColorProvider()..load(),
+        ),
+        ChangeNotifierProvider(
           create: (_) => AppDataProvider()..initialize(),
         ),
       ],
       child: Builder(
         builder: (context) {
           final localeProvider = context.watch<LocaleProvider>();
+          final accentColor = context.watch<AccentColorProvider>().color;
 
           return MaterialApp(
             title: 'Boxing Coach Manager',
             theme: ThemeData(
-              primarySwatch: Colors.red,
+              colorScheme: ColorScheme.fromSeed(seedColor: accentColor),
+              primaryColor: accentColor,
               fontFamily: 'Segoe UI',
             ),
             locale: localeProvider.locale,

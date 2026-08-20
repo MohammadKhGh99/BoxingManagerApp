@@ -356,10 +356,11 @@ class BoxingDatabase {
     required String sessionTitle,
     required String sessionDate,
     required String status,
+    int? sessionId,
     required String paymentStatus,
   }) async {
     final db = await database;
-    return db.insert('attendance', {
+    final insertedId = await db.insert('attendance', {
       'participantPersonalId': participantPersonalId,
       'participantName': participantName,
       'sessionTitle': sessionTitle,
@@ -368,6 +369,28 @@ class BoxingDatabase {
       'paymentStatus': paymentStatus,
       'createdAt': DateTime.now().toIso8601String(),
     });
+
+    // If we have a sessionId and the participant attended, ensure the
+    // session_participants table contains an entry so session participant
+    // counts reflect attendance in the Manage Data view.
+    if (sessionId != null && status == 'attended') {
+      final existing = await db.query(
+        'session_participants',
+        where: 'sessionId = ? AND participantPersonalId = ?',
+        whereArgs: [sessionId, participantPersonalId],
+        limit: 1,
+      );
+      if (existing.isEmpty) {
+        await db.insert('session_participants', {
+          'sessionId': sessionId,
+          'participantPersonalId': participantPersonalId,
+          'participantName': participantName,
+          'paid': 0,
+        });
+      }
+    }
+
+    return insertedId;
   }
 
   Future<int> countParticipants() async {
@@ -429,16 +452,9 @@ class BoxingDatabase {
     if (rows.isNotEmpty) {
       return rows.first;
     }
-
-    final fallbackRows = await db.query(
-      'sessions',
-      orderBy: 'sessionDate DESC, sessionTime DESC',
-      limit: 1,
-    );
-    if (fallbackRows.isEmpty) {
-      return null;
-    }
-    return fallbackRows.first;
+    // Only return a session if it occurs today. Do not fall back to the
+    // most-recent session on other dates.
+    return null;
   }
 
   Future<List<Map<String, dynamic>>> todaySessionParticipants(
@@ -462,7 +478,7 @@ class BoxingDatabase {
 
   Future<List<Map<String, dynamic>>> allSessions() async {
     final db = await database;
-    return db.rawQuery(
+    final sessions = await db.rawQuery(
       '''
       SELECT
         s.id,
@@ -479,6 +495,26 @@ class BoxingDatabase {
       ORDER BY s.sessionDate ASC, s.sessionTime ASC, s.id ASC
       ''',
     );
+    final sessionParticipants = await db.query(
+      'session_participants',
+      columns: ['sessionId', 'participantName'],
+      orderBy: 'sessionId ASC, participantPersonalId ASC, id ASC',
+    );
+    final attendedBySession = <int, List<String>>{};
+    for (final participant in sessionParticipants) {
+      final sessionId = (participant['sessionId'] as num).toInt();
+      attendedBySession
+          .putIfAbsent(sessionId, () => <String>[])
+          .add(participant['participantName']?.toString() ?? '');
+    }
+
+    return sessions.map((session) {
+      final sessionId = (session['id'] as num).toInt();
+      return {
+        ...session,
+        'attendedParticipants': attendedBySession[sessionId] ?? <String>[],
+      };
+    }).toList();
   }
 
   Future<List<Map<String, dynamic>>> recentAttendance({int limit = 5}) async {
@@ -607,6 +643,39 @@ class BoxingDatabase {
 
     final backupFile = File(p.join(backupDir.path, backupFileName));
     return File(sourcePath).copy(backupFile.path);
+  }
+
+  Future<void> restoreBackup(File backupFile) async {
+    if (!await backupFile.exists()) {
+      throw Exception('Backup file does not exist.');
+    }
+
+    final databasesPath = await getDatabasesPath();
+    final targetPath = p.join(databasesPath, _databaseName);
+    final temporaryPath = '$targetPath.restore';
+
+    await _database?.close();
+    _database = null;
+    _databasePath = targetPath;
+
+    final temporaryFile = File(temporaryPath);
+    if (await temporaryFile.exists()) {
+      await temporaryFile.delete();
+    }
+    await backupFile.copy(temporaryPath);
+
+    final restoredDatabase = await openDatabase(
+      temporaryPath,
+      readOnly: true,
+      version: 3,
+    );
+    await restoredDatabase.close();
+
+    final targetFile = File(targetPath);
+    if (await targetFile.exists()) {
+      await targetFile.delete();
+    }
+    await temporaryFile.rename(targetPath);
   }
 
   Future<void> _checkpointDatabase(Database db) async {
